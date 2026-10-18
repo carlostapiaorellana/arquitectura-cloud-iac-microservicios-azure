@@ -9,6 +9,7 @@ use (
 	./apps/services/library
 	./apps/services/lms
 	./apps/services/person
+	./apps/tools/seeder
 	./packages/api-contracts
 	./packages/error-handling
 	./packages/messaging

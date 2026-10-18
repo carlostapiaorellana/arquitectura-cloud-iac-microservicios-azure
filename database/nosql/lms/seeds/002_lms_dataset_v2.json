@@ -1,0 +1,286 @@
+{
+  "courses": [
+    {
+      "id": "c-001",
+      "partitionKey": "catalog",
+      "sectionId": "1",
+      "courseCode": "IS101",
+      "title": "Fundamentos de Programación",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/is-101.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-1",
+          "title": "Evaluación 1",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-06"
+        }
+      ]
+    },
+    {
+      "id": "c-002",
+      "partitionKey": "catalog",
+      "sectionId": "2",
+      "courseCode": "IS102",
+      "title": "Base de Datos I",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/is-102.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-2",
+          "title": "Evaluación 2",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-07"
+        }
+      ]
+    },
+    {
+      "id": "c-003",
+      "partitionKey": "catalog",
+      "sectionId": "3",
+      "courseCode": "IS103",
+      "title": "Arquitectura de Computadoras",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/is-103.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-3",
+          "title": "Evaluación 3",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-08"
+        }
+      ]
+    },
+    {
+      "id": "c-004",
+      "partitionKey": "catalog",
+      "sectionId": "4",
+      "courseCode": "IS104",
+      "title": "Redes de Computadoras",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/is-104.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-4",
+          "title": "Evaluación 4",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-09"
+        }
+      ]
+    },
+    {
+      "id": "c-005",
+      "partitionKey": "catalog",
+      "sectionId": "5",
+      "courseCode": "SW101",
+      "title": "Ingeniería de Software I",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/sw-101.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-5",
+          "title": "Evaluación 5",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-10"
+        }
+      ]
+    },
+    {
+      "id": "c-006",
+      "partitionKey": "catalog",
+      "sectionId": "6",
+      "courseCode": "SW102",
+      "title": "Desarrollo Web",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/sw-102.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-6",
+          "title": "Evaluación 6",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-11"
+        }
+      ]
+    },
+    {
+      "id": "c-007",
+      "partitionKey": "catalog",
+      "sectionId": "7",
+      "courseCode": "AD101",
+      "title": "Fundamentos de Administración",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/ad-101.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-7",
+          "title": "Evaluación 7",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-12"
+        }
+      ]
+    },
+    {
+      "id": "c-008",
+      "partitionKey": "catalog",
+      "sectionId": "8",
+      "courseCode": "AD102",
+      "title": "Contabilidad General",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/ad-102.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-8",
+          "title": "Evaluación 8",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-13"
+        }
+      ]
+    },
+    {
+      "id": "c-009",
+      "partitionKey": "catalog",
+      "sectionId": "9",
+      "courseCode": "ED101",
+      "title": "Fundamentos de Educación",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/ed-101.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-9",
+          "title": "Evaluación 9",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-14"
+        }
+      ]
+    },
+    {
+      "id": "c-010",
+      "partitionKey": "catalog",
+      "sectionId": "10",
+      "courseCode": "ED102",
+      "title": "Tecnología Educativa",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/ed-102.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-10",
+          "title": "Evaluación 10",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-06-15"
+        }
+      ]
+    }
+  ],
+  "enrollments": [
+    {
+      "id": "lms-enr-001",
+      "partitionKey": "018f0001-0000-7000-8000-000000000002",
+      "studentId": "018f0001-0000-7000-8000-000000000002",
+      "courseId": "c-001",
+      "sectionId": "1",
+      "courseCode": "IS101",
+      "title": "Fundamentos de Programación",
+      "role": "STUDENT",
+      "progressPercentage": 65.0
+    },
+    {
+      "id": "lms-enr-002",
+      "partitionKey": "018f0001-0000-7000-8000-000000000012",
+      "studentId": "018f0001-0000-7000-8000-000000000012",
+      "courseId": "c-002",
+      "sectionId": "2",
+      "courseCode": "IS102",
+      "title": "Base de Datos I",
+      "role": "STUDENT",
+      "progressPercentage": 60.0
+    },
+    {
+      "id": "lms-enr-003",
+      "partitionKey": "018f0001-0000-7000-8000-000000000013",
+      "studentId": "018f0001-0000-7000-8000-000000000013",
+      "courseId": "c-003",
+      "sectionId": "3",
+      "courseCode": "IS103",
+      "title": "Arquitectura de Computadoras",
+      "role": "STUDENT",
+      "progressPercentage": 55.0
+    },
+    {
+      "id": "lms-enr-004",
+      "partitionKey": "018f0001-0000-7000-8000-000000000014",
+      "studentId": "018f0001-0000-7000-8000-000000000014",
+      "courseId": "c-004",
+      "sectionId": "4",
+      "courseCode": "IS104",
+      "title": "Redes de Computadoras",
+      "role": "STUDENT",
+      "progressPercentage": 70.0
+    },
+    {
+      "id": "lms-enr-005",
+      "partitionKey": "018f0001-0000-7000-8000-000000000015",
+      "studentId": "018f0001-0000-7000-8000-000000000015",
+      "courseId": "c-005",
+      "sectionId": "5",
+      "courseCode": "SW101",
+      "title": "Ingeniería de Software I",
+      "role": "STUDENT",
+      "progressPercentage": 80.0
+    },
+    {
+      "id": "lms-enr-006",
+      "partitionKey": "018f0001-0000-7000-8000-000000000016",
+      "studentId": "018f0001-0000-7000-8000-000000000016",
+      "courseId": "c-006",
+      "sectionId": "6",
+      "courseCode": "SW102",
+      "title": "Desarrollo Web",
+      "role": "STUDENT",
+      "progressPercentage": 75.0
+    },
+    {
+      "id": "lms-enr-007",
+      "partitionKey": "018f0001-0000-7000-8000-000000000017",
+      "studentId": "018f0001-0000-7000-8000-000000000017",
+      "courseId": "c-007",
+      "sectionId": "7",
+      "courseCode": "AD101",
+      "title": "Fundamentos de Administración",
+      "role": "STUDENT",
+      "progressPercentage": 50.0
+    },
+    {
+      "id": "lms-enr-008",
+      "partitionKey": "018f0001-0000-7000-8000-000000000018",
+      "studentId": "018f0001-0000-7000-8000-000000000018",
+      "courseId": "c-008",
+      "sectionId": "8",
+      "courseCode": "AD102",
+      "title": "Contabilidad General",
+      "role": "STUDENT",
+      "progressPercentage": 60.0
+    },
+    {
+      "id": "lms-enr-009",
+      "partitionKey": "018f0001-0000-7000-8000-000000000019",
+      "studentId": "018f0001-0000-7000-8000-000000000019",
+      "courseId": "c-009",
+      "sectionId": "9",
+      "courseCode": "ED101",
+      "title": "Fundamentos de Educación",
+      "role": "STUDENT",
+      "progressPercentage": 85.0
+    },
+    {
+      "id": "lms-enr-010",
+      "partitionKey": "018f0001-0000-7000-8000-000000000020",
+      "studentId": "018f0001-0000-7000-8000-000000000020",
+      "courseId": "c-010",
+      "sectionId": "10",
+      "courseCode": "ED102",
+      "title": "Tecnología Educativa",
+      "role": "STUDENT",
+      "progressPercentage": 90.0
+    }
+  ]
+}

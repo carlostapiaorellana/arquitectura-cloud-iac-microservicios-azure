@@ -139,32 +139,82 @@ func (s *LibraryService) SeedBooksIfEmpty(ctx context.Context) error {
 		{
 			ID:              "b-001",
 			PartitionKey:    repository.PartitionBooks,
-			ISBN:            "978-0134190440",
-			Title:           "The Go Programming Language",
-			Author:          "Alan Donovan & Brian Kernighan",
+			ISBN:            "9780134685991",
+			Title:           "Effective Java",
+			Author:          "Joshua Bloch",
 			Category:        "Informatica",
-			AvailableCopies: 5,
-			TotalCopies:     5,
+			AvailableCopies: 2,
+			TotalCopies:     2,
 		},
 		{
 			ID:              "b-002",
 			PartitionKey:    repository.PartitionBooks,
-			ISBN:            "978-0132350884",
+			ISBN:            "9780132350884",
 			Title:           "Clean Code",
 			Author:          "Robert C. Martin",
 			Category:        "Informatica",
-			AvailableCopies: 3,
-			TotalCopies:     3,
+			AvailableCopies: 2,
+			TotalCopies:     2,
 		},
 		{
 			ID:              "b-003",
 			PartitionKey:    repository.PartitionBooks,
-			ISBN:            "978-0596007126",
-			Title:           "Head First Design Patterns",
-			Author:          "Eric Freeman",
+			ISBN:            "9786071503145",
+			Title:           "Fundamentos de Bases de Datos",
+			Author:          "Silberschatz, Korth y Sudarshan",
 			Category:        "Informatica",
-			AvailableCopies: 4,
-			TotalCopies:     4,
+			AvailableCopies: 2,
+			TotalCopies:     2,
+		},
+		{
+			ID:              "b-004",
+			PartitionKey:    repository.PartitionBooks,
+			ISBN:            "9788426728210",
+			Title:           "SQL",
+			Author:          "Varios autores",
+			Category:        "Informatica",
+			AvailableCopies: 2,
+			TotalCopies:     2,
+		},
+		{
+			ID:              "b-005",
+			PartitionKey:    repository.PartitionBooks,
+			ISBN:            "9780133594140",
+			Title:           "Computer Networks",
+			Author:          "Andrew S. Tanenbaum",
+			Category:        "Informatica",
+			AvailableCopies: 2,
+			TotalCopies:     2,
+		},
+		{
+			ID:              "b-006",
+			PartitionKey:    repository.PartitionBooks,
+			ISBN:            "9786071513830",
+			Title:           "Administración",
+			Author:          "Stephen Robbins",
+			Category:        "Ciencias Empresariales",
+			AvailableCopies: 2,
+			TotalCopies:     2,
+		},
+		{
+			ID:              "b-007",
+			PartitionKey:    repository.PartitionBooks,
+			ISBN:            "9788499647351",
+			Title:           "Ingeniería del Software",
+			Author:          "Ian Sommerville",
+			Category:        "Informatica",
+			AvailableCopies: 2,
+			TotalCopies:     2,
+		},
+		{
+			ID:              "b-008",
+			PartitionKey:    repository.PartitionBooks,
+			ISBN:            "9786075224565",
+			Title:           "Tecnología Educativa",
+			Author:          "Varios autores",
+			Category:        "Educación",
+			AvailableCopies: 2,
+			TotalCopies:     2,
 		},
 	}
 
@@ -174,23 +224,76 @@ func (s *LibraryService) SeedBooksIfEmpty(ctx context.Context) error {
 		}
 	}
 
-	// Préstamo semilla para alu01
-	demoStudentID := "018f0001-0000-7000-8000-000000000002"
-	initialLoan := models.Loan{
-		ID:           "loan-001",
-		PartitionKey: demoStudentID,
-		StudentID:    demoStudentID,
-		BookID:       "b-001",
-		BookTitle:    "The Go Programming Language",
-		LoanDate:     "2026-10-10",
-		DueDate:      "2026-10-24",
-		Status:       "ACTIVE",
+	// 6 Préstamos semilla Dataset v2
+	initialLoans := []models.Loan{
+		{
+			ID:           "loan-001",
+			PartitionKey: "018f0001-0000-7000-8000-000000000002",
+			StudentID:    "018f0001-0000-7000-8000-000000000002",
+			BookID:       "b-001",
+			BookTitle:    "Effective Java",
+			LoanDate:     "2026-04-01",
+			DueDate:      "2026-04-08",
+			Status:       "RETURNED",
+		},
+		{
+			ID:           "loan-002",
+			PartitionKey: "018f0001-0000-7000-8000-000000000012",
+			StudentID:    "018f0001-0000-7000-8000-000000000012",
+			BookID:       "b-002",
+			BookTitle:    "Clean Code",
+			LoanDate:     "2026-04-03",
+			DueDate:      "2026-04-10",
+			Status:       "RETURNED",
+		},
+		{
+			ID:           "loan-003",
+			PartitionKey: "018f0001-0000-7000-8000-000000000013",
+			StudentID:    "018f0001-0000-7000-8000-000000000013",
+			BookID:       "b-003",
+			BookTitle:    "Fundamentos de Bases de Datos",
+			LoanDate:     "2026-05-01",
+			DueDate:      "2026-05-15",
+			Status:       "ACTIVE",
+		},
+		{
+			ID:           "loan-004",
+			PartitionKey: "018f0001-0000-7000-8000-000000000014",
+			StudentID:    "018f0001-0000-7000-8000-000000000014",
+			BookID:       "b-004",
+			BookTitle:    "SQL",
+			LoanDate:     "2026-05-02",
+			DueDate:      "2026-05-16",
+			Status:       "ACTIVE",
+		},
+		{
+			ID:           "loan-005",
+			PartitionKey: "018f0001-0000-7000-8000-000000000015",
+			StudentID:    "018f0001-0000-7000-8000-000000000015",
+			BookID:       "b-005",
+			BookTitle:    "Computer Networks",
+			LoanDate:     "2026-05-03",
+			DueDate:      "2026-05-12",
+			Status:       "RETURNED",
+		},
+		{
+			ID:           "loan-006",
+			PartitionKey: "018f0001-0000-7000-8000-000000000016",
+			StudentID:    "018f0001-0000-7000-8000-000000000016",
+			BookID:       "b-006",
+			BookTitle:    "Administración",
+			LoanDate:     "2026-05-05",
+			DueDate:      "2026-05-19",
+			Status:       "OVERDUE",
+		},
 	}
 
-	if err := s.repo.PutLoan(ctx, initialLoan); err != nil {
-		s.logger.Warn("Error sembrando préstamo demo", "loanId", initialLoan.ID, "error", err)
+	for _, l := range initialLoans {
+		if err := s.repo.PutLoan(ctx, l); err != nil {
+			s.logger.Warn("Error sembrando préstamo demo", "loanId", l.ID, "error", err)
+		}
 	}
 
-	s.logger.Info("Sembrado inicial de library completado con éxito")
+	s.logger.Info("Sembrado inicial de library v2 completado con éxito")
 	return nil
 }

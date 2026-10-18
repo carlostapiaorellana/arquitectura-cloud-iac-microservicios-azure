@@ -1,0 +1,146 @@
+{
+  "books": [
+    {
+      "id": "b-001",
+      "partitionKey": "catalog",
+      "isbn": "9780134685991",
+      "title": "Effective Java",
+      "author": "Joshua Bloch",
+      "category": "Informatica",
+      "availableCopies": 2,
+      "totalCopies": 2
+    },
+    {
+      "id": "b-002",
+      "partitionKey": "catalog",
+      "isbn": "9780132350884",
+      "title": "Clean Code",
+      "author": "Robert C. Martin",
+      "category": "Informatica",
+      "availableCopies": 2,
+      "totalCopies": 2
+    },
+    {
+      "id": "b-003",
+      "partitionKey": "catalog",
+      "isbn": "9786071503145",
+      "title": "Fundamentos de Bases de Datos",
+      "author": "Silberschatz, Korth y Sudarshan",
+      "category": "Informatica",
+      "availableCopies": 2,
+      "totalCopies": 2
+    },
+    {
+      "id": "b-004",
+      "partitionKey": "catalog",
+      "isbn": "9788426728210",
+      "title": "SQL",
+      "author": "Varios autores",
+      "category": "Informatica",
+      "availableCopies": 2,
+      "totalCopies": 2
+    },
+    {
+      "id": "b-005",
+      "partitionKey": "catalog",
+      "isbn": "9780133594140",
+      "title": "Computer Networks",
+      "author": "Andrew S. Tanenbaum",
+      "category": "Informatica",
+      "availableCopies": 2,
+      "totalCopies": 2
+    },
+    {
+      "id": "b-006",
+      "partitionKey": "catalog",
+      "isbn": "9786071513830",
+      "title": "Administración",
+      "author": "Stephen Robbins",
+      "category": "Ciencias Empresariales",
+      "availableCopies": 2,
+      "totalCopies": 2
+    },
+    {
+      "id": "b-007",
+      "partitionKey": "catalog",
+      "isbn": "9788499647351",
+      "title": "Ingeniería del Software",
+      "author": "Ian Sommerville",
+      "category": "Informatica",
+      "availableCopies": 2,
+      "totalCopies": 2
+    },
+    {
+      "id": "b-008",
+      "partitionKey": "catalog",
+      "isbn": "9786075224565",
+      "title": "Tecnología Educativa",
+      "author": "Varios autores",
+      "category": "Educación",
+      "availableCopies": 2,
+      "totalCopies": 2
+    }
+  ],
+  "loans": [
+    {
+      "id": "loan-001",
+      "partitionKey": "018f0001-0000-7000-8000-000000000002",
+      "studentId": "018f0001-0000-7000-8000-000000000002",
+      "bookId": "b-001",
+      "bookTitle": "Effective Java",
+      "loanDate": "2026-04-01",
+      "dueDate": "2026-04-08",
+      "status": "RETURNED"
+    },
+    {
+      "id": "loan-002",
+      "partitionKey": "018f0001-0000-7000-8000-000000000012",
+      "studentId": "018f0001-0000-7000-8000-000000000012",
+      "bookId": "b-002",
+      "bookTitle": "Clean Code",
+      "loanDate": "2026-04-03",
+      "dueDate": "2026-04-10",
+      "status": "RETURNED"
+    },
+    {
+      "id": "loan-003",
+      "partitionKey": "018f0001-0000-7000-8000-000000000013",
+      "studentId": "018f0001-0000-7000-8000-000000000013",
+      "bookId": "b-003",
+      "bookTitle": "Fundamentos de Bases de Datos",
+      "loanDate": "2026-05-01",
+      "dueDate": "2026-05-15",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "loan-004",
+      "partitionKey": "018f0001-0000-7000-8000-000000000014",
+      "studentId": "018f0001-0000-7000-8000-000000000014",
+      "bookId": "b-004",
+      "bookTitle": "SQL",
+      "loanDate": "2026-05-02",
+      "dueDate": "2026-05-16",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "loan-005",
+      "partitionKey": "018f0001-0000-7000-8000-000000000015",
+      "studentId": "018f0001-0000-7000-8000-000000000015",
+      "bookId": "b-005",
+      "bookTitle": "Computer Networks",
+      "loanDate": "2026-05-03",
+      "dueDate": "2026-05-12",
+      "status": "RETURNED"
+    },
+    {
+      "id": "loan-006",
+      "partitionKey": "018f0001-0000-7000-8000-000000000016",
+      "studentId": "018f0001-0000-7000-8000-000000000016",
+      "bookId": "b-006",
+      "bookTitle": "Administración",
+      "loanDate": "2026-05-05",
+      "dueDate": "2026-05-19",
+      "status": "OVERDUE"
+    }
+  ]
+}
