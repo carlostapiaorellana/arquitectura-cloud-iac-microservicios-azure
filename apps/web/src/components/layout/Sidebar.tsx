@@ -41,7 +41,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
     let isMounted = true;
     const checkGateway = async () => {
       try {
-        const res = await fetch('http://localhost:8080/health', { method: 'GET' });
+        const rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
+        const healthUrl = `${rawBase.replace(/\/api\/v1\/?$/, '')}/health/live`;
+        const res = await fetch(healthUrl, { method: 'GET' });
         if (isMounted) setGatewayOnline(res.ok);
       } catch {
         if (isMounted) setGatewayOnline(false);
@@ -135,7 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
           <Server className="h-4 w-4 shrink-0" />
           {!collapsed && (
             <div className="flex flex-1 items-center justify-between overflow-hidden">
-              <span className="text-xs font-medium">Gateway :8080</span>
+              <span className="text-xs font-medium">API Gateway</span>
               <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider">
                 <span
                   className={cn(

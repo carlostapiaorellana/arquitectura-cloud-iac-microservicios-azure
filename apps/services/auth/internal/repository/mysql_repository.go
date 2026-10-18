@@ -165,3 +165,57 @@ func (r *MySQLRepository) RevokeToken(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+// EnsureSchema inicializa tablas y usuarios semilla en auth_db de forma idempotente
+func (r *MySQLRepository) EnsureSchema(ctx context.Context) error {
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS roles (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			name VARCHAR(50) NOT NULL UNIQUE,
+			description VARCHAR(255),
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS users (
+			id VARCHAR(36) PRIMARY KEY,
+			username VARCHAR(50) NOT NULL UNIQUE,
+			email VARCHAR(100) NOT NULL UNIQUE,
+			password_hash VARCHAR(255) NOT NULL,
+			role_id INT NOT NULL,
+			status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			FOREIGN KEY (role_id) REFERENCES roles(id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS refresh_tokens (
+			id VARCHAR(36) PRIMARY KEY,
+			user_id VARCHAR(36) NOT NULL,
+			token_hash VARCHAR(255) NOT NULL UNIQUE,
+			expires_at DATETIME NOT NULL,
+			revoked_at DATETIME NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`INSERT INTO roles (id, name, description) VALUES
+		(1, 'ADMIN', 'Administrador con control total de la plataforma'),
+		(2, 'STUDENT', 'Estudiante universitario con acceso a portal y matriculas'),
+		(3, 'TEACHER', 'Docente titular o contratado con gestion de notas y asistencias'),
+		(4, 'EMPLOYEE', 'Personal administrativo y operativo')
+		ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);`,
+
+		`INSERT INTO users (id, username, email, password_hash, role_id, status) VALUES
+		('018f0001-0000-7000-8000-000000000001', 'admin', 'admin@universidad.edu.pe', '$2a$10$cLBOWjMS7eay.AQE5hExz.RLwwERIYTq2vgu7rtp3PaCND3tApmCG', 1, 'ACTIVE'),
+		('018f0001-0000-7000-8000-000000000002', 'alu01', 'estudiante1@universidad.edu.pe', '$2a$10$cLBOWjMS7eay.AQE5hExz.RLwwERIYTq2vgu7rtp3PaCND3tApmCG', 2, 'ACTIVE'),
+		('018f0001-0000-7000-8000-000000000003', 'docente1', 'docente1@universidad.edu.pe', '$2a$10$cLBOWjMS7eay.AQE5hExz.RLwwERIYTq2vgu7rtp3PaCND3tApmCG', 3, 'ACTIVE')
+		ON DUPLICATE KEY UPDATE username = VALUES(username), email = VALUES(email), password_hash = VALUES(password_hash), role_id = VALUES(role_id), status = VALUES(status);`,
+	}
+
+	for _, q := range queries {
+		if _, err := r.db.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("error al ejecutar bootstrap schema: %w", err)
+		}
+	}
+	return nil
+}

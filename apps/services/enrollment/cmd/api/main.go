@@ -73,6 +73,14 @@ func main() {
 
 	// 3. Inicializar Repositorio y Servicio
 	enrollmentRepo := repository.NewMySQLEnrollmentRepo(db)
+	initCtx, cancelInit := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := enrollmentRepo.EnsureSchema(initCtx); err != nil {
+		logger.Warn("Aviso durante ensure schema de enrollment", "error", err)
+	} else {
+		logger.Info("Esquema y datos semilla de enrollment verificados exitosamente")
+	}
+	cancelInit()
+
 	enrollmentSvc := services.NewEnrollmentService(enrollmentRepo, messageBus, logger)
 
 	// 4. Handlers

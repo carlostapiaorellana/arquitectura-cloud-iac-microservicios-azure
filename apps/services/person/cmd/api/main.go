@@ -62,6 +62,14 @@ func main() {
 
 	// 3. Inicializar Repositorio y Servicio
 	personRepo := repository.NewMySQLPersonRepo(db)
+	initCtx, cancelInit := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := personRepo.EnsureSchema(initCtx); err != nil {
+		logger.Warn("Aviso durante ensure schema de person", "error", err)
+	} else {
+		logger.Info("Esquema y datos semilla de person verificados exitosamente")
+	}
+	cancelInit()
+
 	personSvc := services.NewPersonService(personRepo, cacheRepo, cfg.CacheTTL)
 
 	// 4. Handlers

@@ -54,6 +54,14 @@ func main() {
 
 	// 2. Inicializar Repositorio y Servicio
 	academicRepo := repository.NewMySQLAcademicRepo(db)
+	initCtx, cancelInit := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := academicRepo.EnsureSchema(initCtx); err != nil {
+		logger.Warn("Aviso durante ensure schema de academic", "error", err)
+	} else {
+		logger.Info("Esquema y datos semilla de academic verificados exitosamente")
+	}
+	cancelInit()
+
 	academicSvc := services.NewAcademicService(academicRepo)
 
 	// 3. Handlers

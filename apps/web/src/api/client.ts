@@ -3,10 +3,9 @@ import { useAuthStore } from '../store/auth.store';
 import { generateULID } from '../utils/ulid';
 import type { RefreshTokenResponse } from '../types/api.types';
 
-// Determinación segura de la URL base del Gateway
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')}/api/v1`
-  : 'http://localhost:8080/api/v1';
+// Determinación segura de la URL base del Gateway (evitando duplicar /api/v1)
+const rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
+const API_BASE_URL = rawBase.endsWith('/api/v1') ? rawBase : `${rawBase}/api/v1`;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

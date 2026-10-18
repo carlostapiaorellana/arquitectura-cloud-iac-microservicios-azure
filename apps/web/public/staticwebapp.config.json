@@ -8,7 +8,7 @@
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "SAMEORIGIN",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Content-Security-Policy": "default-src 'self'; connect-src 'self' http://localhost:8080 https://*.azure-api.net; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'self';"
+    "Content-Security-Policy": "default-src 'self'; connect-src 'self' http://localhost:8080 https://*.azure-api.net https://*.azurecontainerapps.io; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'self';"
   },
   "mimeTypes": {
     ".json": "application/json",

@@ -69,6 +69,14 @@ func main() {
 
 	// 4. Repositorios y Servicios
 	mysqlRepo := repository.NewMySQLFinanceRepo(db)
+	initCtx, cancelInit := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := mysqlRepo.EnsureSchema(initCtx); err != nil {
+		logger.Warn("Aviso durante ensure schema de finance", "error", err)
+	} else {
+		logger.Info("Esquema y datos semilla de finance verificados exitosamente")
+	}
+	cancelInit()
+
 	financeSvc := services.NewFinanceService(mysqlRepo, idempotencyRepo, msgBus, logger)
 
 	// 5. Handlers

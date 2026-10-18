@@ -105,6 +105,11 @@ func NewGatewayProxy(
 // newServiceReverseProxy inicializa un ReverseProxy con ErrorHandler canónico JSON para upstreams caídos (REV-E2E-02)
 func newServiceReverseProxy(target *url.URL, serviceName string, logger *slog.Logger) *httputil.ReverseProxy {
 	proxy := httputil.NewSingleHostReverseProxy(target)
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Host = target.Host
+	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		corrID := observability.ExtractOrGenerateCorrelationID(r)
 
@@ -170,6 +175,10 @@ func (gw *GatewayProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set(observability.HeaderCorrelationID, corrID)
 
 	path := r.URL.Path
+	if strings.HasPrefix(path, "/api/v1/api/v1/") {
+		path = strings.TrimPrefix(path, "/api/v1")
+		r.URL.Path = path
+	}
 
 	// 3. Endpoints de salud del API Gateway
 	if path == "/health" || path == "/health/live" {

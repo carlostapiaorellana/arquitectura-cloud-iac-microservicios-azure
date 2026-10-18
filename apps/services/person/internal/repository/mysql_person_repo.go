@@ -215,3 +215,89 @@ func (r *MySQLPersonRepo) UpdateContact(ctx context.Context, authUserID string, 
 
 	return ErrProfileNotFound
 }
+
+// EnsureSchema inicializa tablas y datos semilla de person_db de forma idempotente
+func (r *MySQLPersonRepo) EnsureSchema(ctx context.Context) error {
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS tipodocumento (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			nombre VARCHAR(30) NOT NULL UNIQUE,
+			estado BIT NOT NULL DEFAULT 1
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS sexo (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			nombre VARCHAR(30) NOT NULL UNIQUE,
+			estado BIT NOT NULL DEFAULT 1
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS distrito (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			nombre VARCHAR(50) NOT NULL UNIQUE,
+			estado BIT NOT NULL DEFAULT 1
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS estadocivil (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			nombre VARCHAR(50) NOT NULL UNIQUE,
+			estado BIT NOT NULL DEFAULT 1
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS students (
+			id VARCHAR(36) PRIMARY KEY,
+			student_code VARCHAR(20) NOT NULL UNIQUE,
+			auth_user_id VARCHAR(36) NOT NULL UNIQUE,
+			first_name VARCHAR(50) NOT NULL,
+			last_name_father VARCHAR(40) NOT NULL,
+			last_name_mother VARCHAR(40) NOT NULL,
+			birth_date DATE NOT NULL,
+			document_number VARCHAR(20) NOT NULL UNIQUE,
+			nationality VARCHAR(20) NOT NULL DEFAULT 'Peruana',
+			address TEXT NOT NULL,
+			phone VARCHAR(15) NULL,
+			mobile VARCHAR(15) NULL,
+			email VARCHAR(100) NOT NULL UNIQUE,
+			status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+			district_id INT NOT NULL,
+			gender_id INT NOT NULL,
+			document_type_id INT NOT NULL,
+			civil_status_id INT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			INDEX idx_students_auth_user (auth_user_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`INSERT IGNORE INTO tipodocumento (id, nombre, estado) VALUES
+		(1, 'DNI', 1), (2, 'Pasaporte', 1), (3, 'Carnet Extranjería', 1);`,
+
+		`INSERT IGNORE INTO sexo (id, nombre, estado) VALUES
+		(1, 'Masculino', 1), (2, 'Femenino', 1);`,
+
+		`INSERT IGNORE INTO estadocivil (id, nombre, estado) VALUES
+		(1, 'Soltero(a)', 1), (2, 'Casado(a)', 1);`,
+
+		`INSERT IGNORE INTO distrito (id, nombre, estado) VALUES
+		(1, 'Lima', 1), (12, 'Jesús María', 1), (15, 'Lima Cercado', 1), (17, 'Los Olivos', 1),
+		(21, 'Miraflores', 1), (31, 'San Isidro', 1), (32, 'San Juan de Lurigancho', 1);`,
+
+		`INSERT INTO students (
+			id, student_code, auth_user_id, first_name, last_name_father, last_name_mother,
+			birth_date, document_number, nationality, address, phone, mobile,
+			email, status, district_id, gender_id, document_type_id, civil_status_id
+		) VALUES (
+			'018f0001-0000-7000-9000-000000000002', 'ALU-2026-0001', '018f0001-0000-7000-8000-000000000002',
+			'Juan Carlos', 'Ramirez', 'Lopez', '2005-03-15', '78000001', 'Peruana',
+			'Av. Los Próceres 123 - San Juan de Lurigancho', '014500001', '900100001',
+			'estudiante1@universidad.edu.pe', 'ACTIVE', 32, 1, 1, 1
+		) ON DUPLICATE KEY UPDATE
+			first_name = VALUES(first_name), last_name_father = VALUES(last_name_father),
+			last_name_mother = VALUES(last_name_mother), status = VALUES(status);`,
+	}
+
+	for _, q := range queries {
+		if _, err := r.db.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("error al ejecutar bootstrap person schema: %w", err)
+		}
+	}
+	return nil
+}

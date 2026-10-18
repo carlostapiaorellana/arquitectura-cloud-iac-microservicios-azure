@@ -179,3 +179,89 @@ func (r *MySQLEnrollmentRepo) CreateEnrollment(ctx context.Context, studentID st
 		Details:            details,
 	}, nil
 }
+
+// EnsureSchema inicializa tablas y datos semilla de enrollment_db de forma idempotente
+func (r *MySQLEnrollmentRepo) EnsureSchema(ctx context.Context) error {
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS enrollment_statuses (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			name VARCHAR(30) NOT NULL UNIQUE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS enrollment_types (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			name VARCHAR(30) NOT NULL UNIQUE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS grade_types (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			name VARCHAR(30) NOT NULL UNIQUE,
+			weight DECIMAL(3,2) NOT NULL DEFAULT 1.00
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS enrollments (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			student_id VARCHAR(36) NOT NULL,
+			academic_period_id INT NOT NULL,
+			enrollment_status_id INT,
+			enrollment_type_id INT,
+			observations TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			INDEX idx_enrollments_student (student_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS enrollment_details (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			enrollment_id INT NOT NULL,
+			section_id INT NOT NULL,
+			status VARCHAR(20) DEFAULT 'ENROLLED',
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			INDEX idx_enrollment_details_section (section_id),
+			CONSTRAINT fk_enrollment_details_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS grades (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			enrollment_detail_id INT NOT NULL,
+			grade_type_id INT NOT NULL,
+			score DECIMAL(5,2) NOT NULL,
+			graded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			INDEX idx_grades_detail (enrollment_detail_id),
+			CONSTRAINT fk_grades_detail FOREIGN KEY (enrollment_detail_id) REFERENCES enrollment_details(id) ON DELETE CASCADE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`INSERT IGNORE INTO enrollment_statuses (id, name) VALUES
+		(1, 'RESERVED'), (2, 'ENROLLED'), (3, 'CANCELLED'), (4, 'COMPLETED');`,
+
+		`INSERT IGNORE INTO enrollment_types (id, name) VALUES
+		(1, 'REGULAR'), (2, 'EXTEMPORANEA'), (3, 'DIRIGIDA');`,
+
+		`INSERT IGNORE INTO grade_types (id, name, weight) VALUES
+		(1, 'Examen Parcial', 0.30),
+		(2, 'Examen Final', 0.40),
+		(3, 'Práctica Calificada 1', 0.15),
+		(4, 'Práctica Calificada 2', 0.15);`,
+
+		`INSERT IGNORE INTO enrollments (
+			id, student_id, academic_period_id, enrollment_status_id, enrollment_type_id, observations, created_at
+		) VALUES (
+			1, '018f0001-0000-7000-8000-000000000002', 1, 2, 1, 'Matrícula regular periodo 2026-I', '2026-03-01 09:00:00'
+		);`,
+
+		`INSERT IGNORE INTO enrollment_details (id, enrollment_id, section_id, status, created_at) VALUES
+		(1, 1, 1, 'ENROLLED', '2026-03-01 09:05:00'),
+		(2, 1, 2, 'ENROLLED', '2026-03-01 09:05:00');`,
+
+		`INSERT IGNORE INTO grades (id, enrollment_detail_id, grade_type_id, score, graded_at) VALUES
+		(1, 1, 1, 16.50, '2026-05-15 10:00:00'),
+		(2, 1, 3, 18.00, '2026-04-10 10:00:00'),
+		(3, 2, 1, 17.00, '2026-05-16 11:00:00');`,
+	}
+
+	for _, q := range queries {
+		if _, err := r.db.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("error al ejecutar bootstrap enrollment schema: %w", err)
+		}
+	}
+	return nil
+}

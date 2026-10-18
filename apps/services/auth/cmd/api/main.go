@@ -69,6 +69,14 @@ func main() {
 
 	// 3. Inicializar Servicios y Repositorios
 	repo := repository.NewMySQLRepository(db)
+	initCtx, cancelInit := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := repo.EnsureSchema(initCtx); err != nil {
+		logger.Warn("Aviso durante ensure schema de auth", "error", err)
+	} else {
+		logger.Info("Esquema y usuarios semilla de auth verificados exitosamente")
+	}
+	cancelInit()
+
 	jwtSvc, err := services.NewJWTService(cfg.CertsDir, cfg.TokenExpiration)
 	if err != nil {
 		logger.Error("Fallo crítico al inicializar JWTService", "error", err)
