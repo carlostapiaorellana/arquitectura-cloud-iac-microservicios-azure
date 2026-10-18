@@ -1,0 +1,17 @@
+subscription_id      = "94846a8b-9491-4312-82bb-3082c340b45f"
+environment          = "dev"
+location             = "northcentralus"
+project_name         = "univ"
+mysql_admin_username = "univadmin"
+mysql_admin_password = "P@ssw0rd1234!Enterprise"
+publisher_name       = "Universidad Nacional Frontend Platform Group"
+publisher_email      = "admin@universidad.edu.pe"
+
+tags = {
+  Project            = "plataforma-universitaria"
+  Environment        = "dev"
+  Owner              = "cloud-architecture-team"
+  CostCenter         = "academic-engineering"
+  ManagedBy          = "terraform"
+  DataClassification = "confidential"
+}

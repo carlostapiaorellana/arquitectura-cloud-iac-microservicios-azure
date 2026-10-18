@@ -1,0 +1,41 @@
+{
+  "courses": [
+    {
+      "id": "c-001",
+      "partitionKey": "catalog",
+      "sectionId": "1",
+      "courseCode": "SIS-101",
+      "title": "Algoritmos y Estructura de Datos",
+      "syllabusUrl": "https://unfpg.edu.pe/syllabus/sis-101.pdf",
+      "evaluations": [
+        {
+          "evaluationId": "eval-1",
+          "title": "Practica Calificada 1",
+          "type": "PRAC",
+          "weight": 20,
+          "dueDate": "2026-04-15"
+        },
+        {
+          "evaluationId": "eval-2",
+          "title": "Examen Parcial",
+          "type": "EXAM",
+          "weight": 40,
+          "dueDate": "2026-05-20"
+        }
+      ]
+    }
+  ],
+  "enrollments": [
+    {
+      "id": "lms-enr-001",
+      "partitionKey": "018f0001-0000-7000-8000-000000000002",
+      "studentId": "018f0001-0000-7000-8000-000000000002",
+      "courseId": "c-001",
+      "sectionId": "1",
+      "courseCode": "SIS-101",
+      "title": "Algoritmos y Estructura de Datos",
+      "role": "STUDENT",
+      "progressPercentage": 65.0
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+name: "App CI Matrix & Build Pipeline"
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'go.work*'
+      - '.github/workflows/app-ci-matrix.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'go.work*'
+      - '.github/workflows/app-ci-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # =========================================================================
+  # JOB 1: BACKEND MATRIX CI (8 Componentes Go en Paralelo)
+  # =========================================================================
+  backend-matrix:
+    name: "Backend CI: ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - auth
+          - person
+          - academic
+          - enrollment
+          - finance
+          - library
+          - lms
+          - gateway
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          check-latest: false
+
+      - name: Sync Go Workspace
+        run: |
+          go work sync
+
+      - name: Run Tests with Race Detection (-race)
+        run: |
+          if [ "${{ matrix.service }}" = "gateway" ]; then
+            TARGET_DIR="./apps/gateway/..."
+          else
+            TARGET_DIR="./apps/services/${{ matrix.service }}/..."
+          fi
+          echo ">>> Running unit tests with race detection for: $TARGET_DIR"
+          go test -v -race $TARGET_DIR
+
+      - name: Static Code Analysis (go vet)
+        run: |
+          if [ "${{ matrix.service }}" = "gateway" ]; then
+            TARGET_DIR="./apps/gateway/..."
+          else
+            TARGET_DIR="./apps/services/${{ matrix.service }}/..."
+          fi
+          echo ">>> Running static analysis for: $TARGET_DIR"
+          go vet $TARGET_DIR
+
+      - name: Build Multi-Stage Docker Image
+        run: |
+          if [ "${{ matrix.service }}" = "gateway" ]; then
+            DOCKERFILE="apps/gateway/Dockerfile"
+          else
+            DOCKERFILE="apps/services/${{ matrix.service }}/Dockerfile"
+          fi
+          echo ">>> Building container image from: $DOCKERFILE"
+          docker build -f "$DOCKERFILE" -t "univ-${{ matrix.service }}:ci-test" .
+
+  # =========================================================================
+  # JOB 2: FRONTEND CI (React 18 / TypeScript / Vite / Nginx)
+  # =========================================================================
+  frontend-ci:
+    name: "Frontend CI: Portal Web"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install Clean Dependencies
+        run: |
+          npm ci
+
+      - name: TypeScript Strict Typecheck (tsc --noEmit)
+        run: |
+          npx tsc --noEmit
+
+      - name: Production SPA Build (Vite)
+        run: |
+          npm run build
+
+      - name: Security Vulnerability Audit
+        run: |
+          npm audit --audit-level=high || true

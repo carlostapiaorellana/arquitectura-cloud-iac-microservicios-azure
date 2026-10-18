@@ -1,0 +1,41 @@
+module github.com/universidad/platform/apps/services/auth
+
+go 1.22
+
+require (
+	github.com/universidad/platform/packages/api-contracts v0.0.0
+	github.com/universidad/platform/packages/error-handling v0.0.0
+	github.com/universidad/platform/packages/messaging v0.0.0
+	github.com/universidad/platform/packages/mysql v0.0.0
+	github.com/universidad/platform/packages/observability v0.0.0
+	golang.org/x/crypto v0.33.0
+)
+
+require (
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.7.4 // indirect
+	github.com/Azure/go-amqp v1.3.0 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.3.3 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/go-sql-driver/mysql v1.8.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
+	github.com/redis/go-redis/v9 v9.7.1 // indirect
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
+)
+
+replace (
+	github.com/universidad/platform/packages/api-contracts => ../../../packages/api-contracts
+	github.com/universidad/platform/packages/error-handling => ../../../packages/error-handling
+	github.com/universidad/platform/packages/messaging => ../../../packages/messaging
+	github.com/universidad/platform/packages/mysql => ../../../packages/mysql
+	github.com/universidad/platform/packages/observability => ../../../packages/observability
+)

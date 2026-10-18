@@ -1,0 +1,435 @@
+services:
+  # ============================================================
+  # 1. Base de Datos Relacional Aislada (MySQL 8.4)
+  # ============================================================
+  mysql:
+    image: mysql:8.4
+    container_name: univ-local-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_password_123
+    volumes:
+      - ../database/mysql/bootstrap:/docker-entrypoint-initdb.d:ro
+      - mysql_data:/var/lib/mysql
+    networks:
+      - internal-net
+    ports:
+      # Puerto 3307 hacia host para evitar colisiones TCP con instancias locales en 3306
+      - "127.0.0.1:3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--protocol=tcp", "-u", "root", "-proot_dev_password_123"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+
+  # ============================================================
+  # 2. Motor de Caché y PubSub (Redis 7)
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: univ-local-redis
+    networks:
+      - internal-net
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================
+  # 2.1 Emulador NoSQL Documental (DynamoDB Local)
+  # ============================================================
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: univ-dynamodb-local
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+    networks:
+      - internal-net
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  # ============================================================
+  # 3. Contenedores de Migración DDL y Seeds (Perfil migrate)
+  # ============================================================
+  migrate-auth-db:
+    image: mysql:8.4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal-net
+    volumes:
+      - ../database/mysql/auth:/sql:ro
+    command: >
+      sh -c "for i in $$(seq 1 15); do
+               mysql -h mysql -P 3306 -u auth_migrator -pauth_migrator_pass123 -e 'SELECT 1' auth_db > /dev/null 2>&1 && break;
+               echo 'Esperando que auth_db esté listo... ('$$i'/15)';
+               sleep 2;
+               if [ $$i -eq 15 ]; then echo 'ERROR: Timeout esperando auth_db tras 30s'; exit 1; fi;
+             done &&
+             mysql -h mysql -P 3306 -u auth_migrator -pauth_migrator_pass123 auth_db < /sql/migrations/V001__create_auth_tables.sql &&
+             mysql -h mysql -P 3306 -u auth_migrator -pauth_migrator_pass123 auth_db < /sql/seeds/001_auth_seeds.sql &&
+             echo 'auth_db migrado exitosamente'"
+    profiles:
+      - migrate
+
+  migrate-person-db:
+    image: mysql:8.4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal-net
+    volumes:
+      - ../database/mysql/person:/sql:ro
+    command: >
+      sh -c "for i in $$(seq 1 15); do
+               mysql -h mysql -P 3306 -u person_migrator -pperson_migrator_pass123 -e 'SELECT 1' person_db > /dev/null 2>&1 && break;
+               echo 'Esperando que person_db esté listo... ('$$i'/15)';
+               sleep 2;
+               if [ $$i -eq 15 ]; then echo 'ERROR: Timeout esperando person_db tras 30s'; exit 1; fi;
+             done &&
+             mysql -h mysql -P 3306 -u person_migrator -pperson_migrator_pass123 person_db < /sql/migrations/V001__create_person_tables.sql &&
+             mysql -h mysql -P 3306 -u person_migrator -pperson_migrator_pass123 person_db < /sql/seeds/001_person_seeds.sql &&
+             echo 'person_db migrado exitosamente'"
+    profiles:
+      - migrate
+
+  migrate-academic-db:
+    image: mysql:8.4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal-net
+    volumes:
+      - ../database/mysql/academic:/sql:ro
+    command: >
+      sh -c "for i in $$(seq 1 15); do
+               mysql -h mysql -P 3306 -u academic_migrator -pacademic_migrator_pass123 -e 'SELECT 1' academic_db > /dev/null 2>&1 && break;
+               echo 'Esperando que academic_db esté listo... ('$$i'/15)';
+               sleep 2;
+               if [ $$i -eq 15 ]; then echo 'ERROR: Timeout esperando academic_db tras 30s'; exit 1; fi;
+             done &&
+             mysql -h mysql -P 3306 -u academic_migrator -pacademic_migrator_pass123 academic_db < /sql/migrations/V001__create_academic_tables.sql &&
+             mysql -h mysql -P 3306 -u academic_migrator -pacademic_migrator_pass123 academic_db < /sql/seeds/001_academic_seeds.sql &&
+             echo 'academic_db migrado exitosamente'"
+    profiles:
+      - migrate
+
+  migrate-enrollment-db:
+    image: mysql:8.4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal-net
+    volumes:
+      - ../database/mysql/enrollment:/sql:ro
+    command: >
+      sh -c "for i in $$(seq 1 15); do
+               mysql -h mysql -P 3306 -u enrollment_migrator -penrollment_migrator_pass123 -e 'SELECT 1' enrollment_db > /dev/null 2>&1 && break;
+               echo 'Esperando que enrollment_db esté listo... ('$$i'/15)';
+               sleep 2;
+               if [ $$i -eq 15 ]; then echo 'ERROR: Timeout esperando enrollment_db tras 30s'; exit 1; fi;
+             done &&
+             mysql -h mysql -P 3306 -u enrollment_migrator -penrollment_migrator_pass123 enrollment_db < /sql/migrations/V001__create_enrollment_tables.sql &&
+             mysql -h mysql -P 3306 -u enrollment_migrator -penrollment_migrator_pass123 enrollment_db < /sql/seeds/001_enrollment_seeds.sql &&
+             echo 'enrollment_db migrado exitosamente'"
+    profiles:
+      - migrate
+
+  migrate-finance-db:
+    image: mysql:8.4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal-net
+    volumes:
+      - ../database/mysql/finance:/sql:ro
+    command: >
+      sh -c "for i in $$(seq 1 15); do
+               mysql -h mysql -P 3306 -u finance_migrator -pfinance_migrator_pass123 -e 'SELECT 1' finance_db > /dev/null 2>&1 && break;
+               echo 'Esperando que finance_db esté listo... ('$$i'/15)';
+               sleep 2;
+               if [ $$i -eq 15 ]; then echo 'ERROR: Timeout esperando finance_db tras 30s'; exit 1; fi;
+             done &&
+             mysql -h mysql -P 3306 -u finance_migrator -pfinance_migrator_pass123 finance_db < /sql/migrations/V001__create_finance_tables.sql &&
+             mysql -h mysql -P 3306 -u finance_migrator -pfinance_migrator_pass123 finance_db < /sql/seeds/001_finance_seeds.sql &&
+             echo 'finance_db migrado exitosamente'"
+    profiles:
+      - migrate
+
+  # ============================================================
+  # 4. Microservicio de Autenticación (auth-service)
+  # ============================================================
+  auth-service:
+    build:
+      context: ..
+      dockerfile: apps/services/auth/Dockerfile
+    container_name: univ-auth-service
+    environment:
+      PORT: 8081
+      ENV: local
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: auth_user
+      MYSQL_PASSWORD: auth_user_pass123
+      MYSQL_DATABASE: auth_db
+      CERTS_DIR: /app/certs
+      EVENT_BUS_TYPE: local_redis
+      REDIS_ADDR: redis:6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  # ============================================================
+  # 5. Microservicio de Personas (person-service)
+  # ============================================================
+  person-service:
+    build:
+      context: ..
+      dockerfile: apps/services/person/Dockerfile
+    container_name: univ-person-service
+    environment:
+      PORT: 8082
+      ENV: local
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: person_user
+      MYSQL_PASSWORD: person_user_pass123
+      MYSQL_DATABASE: person_db
+      REDIS_ADDR: redis:6379
+      CACHE_TTL_MINUTES: 10
+      EVENT_BUS_TYPE: local_redis
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  # ============================================================
+  # 6. Microservicio Académico (academic-service)
+  # ============================================================
+  academic-service:
+    build:
+      context: ..
+      dockerfile: apps/services/academic/Dockerfile
+    container_name: univ-academic-service
+    environment:
+      PORT: 8083
+      ENV: local
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: academic_user
+      MYSQL_PASSWORD: academic_user_pass123
+      MYSQL_DATABASE: academic_db
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  # ============================================================
+  # 7. Microservicio de Matrículas (enrollment-service)
+  # ============================================================
+  enrollment-service:
+    build:
+      context: ..
+      dockerfile: apps/services/enrollment/Dockerfile
+    container_name: univ-enrollment-service
+    environment:
+      PORT: 8084
+      ENV: local
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: enrollment_user
+      MYSQL_PASSWORD: enrollment_user_pass123
+      MYSQL_DATABASE: enrollment_db
+      REDIS_ADDR: redis:6379
+      EVENT_BUS_TYPE: local_redis
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  # ============================================================
+  # 8. Microservicio Financiero (finance-service)
+  # ============================================================
+  finance-service:
+    build:
+      context: ..
+      dockerfile: apps/services/finance/Dockerfile
+    container_name: univ-finance-service
+    environment:
+      PORT: 8085
+      ENV: local
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: finance_user
+      MYSQL_PASSWORD: finance_user_pass123
+      MYSQL_DATABASE: finance_db
+      REDIS_ADDR: redis:6379
+      EVENT_BUS_TYPE: local_redis
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  # ============================================================
+  # 9. Microservicio de Biblioteca NoSQL (library-service)
+  # ============================================================
+  library-service:
+    build:
+      context: ..
+      dockerfile: apps/services/library/Dockerfile
+    container_name: univ-library-service
+    environment:
+      PORT: 8086
+      ENV: local
+      NOSQL_PROVIDER: dynamodb_local
+      NOSQL_ENDPOINT: http://dynamodb-local:8000
+      NOSQL_DATABASE: library_db
+    depends_on:
+      dynamodb-local:
+        condition: service_started
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  # ============================================================
+  # 10. Microservicio de Aula Virtual NoSQL (lms-service)
+  # ============================================================
+  lms-service:
+    build:
+      context: ..
+      dockerfile: apps/services/lms/Dockerfile
+    container_name: univ-lms-service
+    environment:
+      PORT: 8087
+      ENV: local
+      NOSQL_PROVIDER: dynamodb_local
+      NOSQL_ENDPOINT: http://dynamodb-local:8000
+      NOSQL_DATABASE: lms_db
+    depends_on:
+      dynamodb-local:
+        condition: service_started
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  # ============================================================
+  # 11. API Gateway Perimetral (gateway)
+  # ============================================================
+  gateway:
+    build:
+      context: ..
+      dockerfile: apps/gateway/Dockerfile
+    container_name: univ-api-gateway
+    environment:
+      PORT: 8080
+      ENV: local
+      AUTH_SERVICE_URL: http://auth-service:8081
+      PERSON_SERVICE_URL: http://person-service:8082
+      ACADEMIC_SERVICE_URL: http://academic-service:8083
+      ENROLLMENT_SERVICE_URL: http://enrollment-service:8084
+      FINANCE_SERVICE_URL: http://finance-service:8085
+      LIBRARY_SERVICE_URL: http://library-service:8086
+      LMS_SERVICE_URL: http://lms-service:8087
+      JWKS_URL: http://auth-service:8081/.well-known/jwks.json
+      ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+    ports:
+      # Único servicio expuesto al host en ejecución perimetral
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      auth-service:
+        condition: service_started
+      person-service:
+        condition: service_started
+      academic-service:
+        condition: service_started
+      enrollment-service:
+        condition: service_started
+      finance-service:
+        condition: service_started
+      library-service:
+        condition: service_started
+      lms-service:
+        condition: service_started
+    networks:
+      - public-net
+      - internal-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/gateway", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ============================================================
+  # 12. Portal Estudiantil Web SPA (React 18 + Nginx Unprivileged)
+  # ============================================================
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8080/api/v1
+    container_name: univ-web-portal
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:8080"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks:
+      - public-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+
+# ============================================================
+# Redes Segregadas
+# ============================================================
+networks:
+  public-net:
+    driver: bridge
+  internal-net:
+    driver: bridge
+
+# ============================================================
+# Volúmenes Persistentes
+# ============================================================
+volumes:
+  mysql_data:

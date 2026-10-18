@@ -1,0 +1,18 @@
+go 1.22
+
+use (
+	./apps/gateway
+	./apps/services/academic
+	./apps/services/auth
+	./apps/services/enrollment
+	./apps/services/finance
+	./apps/services/library
+	./apps/services/lms
+	./apps/services/person
+	./packages/api-contracts
+	./packages/error-handling
+	./packages/messaging
+	./packages/mysql
+	./packages/nosql
+	./packages/observability
+)

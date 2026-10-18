@@ -1,0 +1,162 @@
+name: "IaC Delivery Pipeline (OIDC Passwordless)"
+# Federación OIDC dual: Soporta subjects por nombre e IDs numéricos inmutables
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'infra/terraform/**'
+      - '.github/workflows/infra-delivery-oidc.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-dev
+  cancel-in-progress: false
+
+env:
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID || secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID || secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
+  TFSTATE_STORAGE_ACCOUNT: ${{ vars.TFSTATE_STORAGE_ACCOUNT || secrets.TFSTATE_STORAGE_ACCOUNT }}
+  TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP || 'rg-univ-tfstate-ncus' }}
+  TF_VAR_mysql_admin_password: ${{ secrets.MYSQL_ADMIN_PASSWORD || 'DevSecurePass2026!NCUS' }}
+  ARM_RESOURCE_PROVIDER_REGISTRATIONS: "none"
+
+jobs:
+  # =========================================================================
+  # JOB 1: TERRAFORM PLAN (Generación de Plan y Resumen OIDC)
+  # =========================================================================
+  terraform-plan:
+    name: "Terraform Plan (dev)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+          terraform_wrapper: false
+
+      - name: Azure Login via OIDC (Passwordless)
+        if: env.ARM_CLIENT_ID != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          cd infra/terraform/environments/dev
+          if [ -n "$ARM_CLIENT_ID" ] && [ -n "$TFSTATE_STORAGE_ACCOUNT" ]; then
+            echo ">>> Initializing Terraform with remote Azure Storage state backend (OIDC)..."
+            terraform init -input=false \
+              -backend-config="resource_group_name=${TFSTATE_RESOURCE_GROUP}" \
+              -backend-config="storage_account_name=${TFSTATE_STORAGE_ACCOUNT}" \
+              -backend-config="container_name=tfstate" \
+              -backend-config="key=dev.terraform.tfstate" \
+              -backend-config="use_oidc=true"
+          else
+            echo ">>> Azure OIDC credentials not detected in repository variables. Running offline init..."
+            terraform init -backend=false -input=false
+          fi
+
+      - name: Terraform Plan
+        run: |
+          cd infra/terraform/environments/dev
+          if [ -n "$ARM_CLIENT_ID" ] && [ -n "$TFSTATE_STORAGE_ACCOUNT" ]; then
+            echo ">>> Running terraform plan with binary output..."
+            terraform plan -input=false -out=tfplan
+            terraform show -no-color tfplan > tfplan.txt
+          else
+            echo ">>> Remote Azure credentials not configured. Generating offline validation plan..."
+            terraform validate
+            echo "Validación estática offline completada exitosamente. Se requieren variables OIDC para plan remoto." > tfplan.txt
+          fi
+
+      - name: Publish Step Summary
+        run: |
+          echo "## 📋 Terraform Plan Summary (Entorno: dev)" >> $GITHUB_STEP_SUMMARY
+          echo "Fecha: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "Suscripción: \`${ARM_SUBSCRIPTION_ID:-94846a8b-9491-4312-82bb-3082c340b45f}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Región: \`mexicocentral\`" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          head -n 60 infra/terraform/environments/dev/tfplan.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload tfplan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-dev
+          path: |
+            infra/terraform/environments/dev/tfplan
+            infra/terraform/environments/dev/tfplan.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # =========================================================================
+  # JOB 2: TERRAFORM APPLY (Compuerta Protegida con Aprobación Humana)
+  # =========================================================================
+  terraform-apply:
+    name: "Terraform Apply (azure-dev)"
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    environment: azure-dev
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+          terraform_wrapper: false
+
+      - name: Download tfplan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-dev
+          path: infra/terraform/environments/dev
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          cd infra/terraform/environments/dev
+          terraform init -input=false \
+            -backend-config="resource_group_name=${TFSTATE_RESOURCE_GROUP}" \
+            -backend-config="storage_account_name=${TFSTATE_STORAGE_ACCOUNT}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=dev.terraform.tfstate" \
+            -backend-config="use_oidc=true"
+
+      - name: Terraform Apply (Aprobado por Operador)
+        run: |
+          cd infra/terraform/environments/dev
+          if [ ! -f "tfplan" ]; then
+            FOUND_PLAN=$(find "$GITHUB_WORKSPACE" -name "tfplan" -type f 2>/dev/null | head -n 1)
+            if [ -n "$FOUND_PLAN" ]; then
+              echo ">>> Found tfplan at $FOUND_PLAN, copying to working directory..."
+              cp "$FOUND_PLAN" ./tfplan
+            fi
+          fi
+          if [ -f "tfplan" ]; then
+            echo ">>> Applying pre-approved tfplan..."
+            terraform apply -input=false tfplan
+          else
+            echo "ERROR: tfplan file not found."
+            find "$GITHUB_WORKSPACE" -maxdepth 4
+            exit 1
+          fi

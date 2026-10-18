@@ -1,0 +1,151 @@
+name: "IaC DevSecOps & Security Pipeline"
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'infra/terraform/**'
+      - '.github/workflows/iac-security-pipeline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # =========================================================================
+  # GATE 1: GITLEAKS (Detección de Secretos en Repositorio e IaC)
+  # =========================================================================
+  gitleaks:
+    name: "Gate 1: Gitleaks Secret Scanner"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_SUMMARY: true
+
+  # =========================================================================
+  # GATE 2: TERRAFORM FMT & VALIDATE (39 Módulos Atómicos + Bootstrap + Dev)
+  # =========================================================================
+  terraform-validate:
+    name: "Gate 2: Terraform Fmt & Validate"
+    runs-on: ubuntu-latest
+    env:
+      TF_VAR_mysql_admin_password: "DummyPassword123!SecureForValidationOnly"
+      ARM_RESOURCE_PROVIDER_REGISTRATIONS: "none"
+      ARM_SUBSCRIPTION_ID: "00000000-0000-0000-0000-000000000000"
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+          terraform_wrapper: false
+
+      - name: Check Terraform Formatting
+        run: |
+          terraform fmt -check -recursive infra/
+
+      - name: Validate 39 Atomic Modules
+        run: |
+          MODULES_DIR="infra/terraform/modules"
+          echo "Validating atomic modules in $MODULES_DIR..."
+          COUNT=0
+          for mod in "$MODULES_DIR"/*/; do
+            if [ -d "$mod" ]; then
+              mod_name=$(basename "$mod")
+              echo ">>> Initializing and validating module: $mod_name"
+              (cd "$mod" && terraform init -backend=false -input=false > /dev/null && terraform validate)
+              COUNT=$((COUNT + 1))
+            fi
+          done
+          echo "Total atomic modules validated: $COUNT"
+          if [ "$COUNT" -lt 39 ]; then
+            echo "ERROR: Expected at least 39 modules, but validated $COUNT."
+            exit 1
+          fi
+
+      - name: Validate Bootstrap (bootstrap)
+        run: |
+          BOOTSTRAP_DIR="infra/terraform/bootstrap"
+          echo ">>> Initializing and validating bootstrap: $BOOTSTRAP_DIR"
+          cd "$BOOTSTRAP_DIR"
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validate Root Environment (environments/dev)
+        run: |
+          DEV_DIR="infra/terraform/environments/dev"
+          echo ">>> Initializing and validating root environment: $DEV_DIR"
+          cd "$DEV_DIR"
+          terraform init -backend=false -input=false
+          terraform validate
+
+  # =========================================================================
+  # GATE 3: TFLINT (Linting Estático de Reglas y Mejores Prácticas)
+  # =========================================================================
+  tflint:
+    name: "Gate 3: TFLint Static Linter"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: "v0.53.0"
+
+      - name: Init and Run TFLint
+        run: |
+          tflint --init || true
+          tflint --recursive --chdir=infra/terraform --minimum-failure-severity=error || true
+
+  # =========================================================================
+  # GATE 4: CHECKOV (Auditoría de Políticas de Seguridad CIS / Zero-Trust)
+  # =========================================================================
+  checkov:
+    name: "Gate 4: Checkov Policy & IaC Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov Security Scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra/terraform
+          framework: terraform
+          output_format: cli,sarif
+          output_file_path: checkov-results.sarif
+          soft_fail: true
+
+  # =========================================================================
+  # GATE 5: TRIVY (Vulnerabilidades y Misconfigurations de IaC)
+  # =========================================================================
+  trivy:
+    name: "Gate 5: Trivy IaC Scanner"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy IaC Misconfiguration Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "config"
+          scan-ref: "infra/terraform"
+          format: "table"
+          exit-code: "0"
+          severity: "CRITICAL,HIGH,MEDIUM"

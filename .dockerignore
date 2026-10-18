@@ -1,0 +1,14 @@
+.git
+.github
+.terraform
+**/.terraform
+infra
+database
+docs
+scripts
+cerebro
+tmp
+apps/web/node_modules
+apps/web/dist
+**/*.exe
+**/*.tfstate*
