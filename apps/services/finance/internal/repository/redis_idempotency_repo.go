@@ -17,6 +17,9 @@ var ErrIdempotencyNotFound = errors.New("idempotency record not found")
 type IdempotencyRepository interface {
 	GetIdempotency(ctx context.Context, key string) (*models.PaymentResponse, error)
 	SetIdempotency(ctx context.Context, key string, resp *models.PaymentResponse, ttl time.Duration) error
+	GetOrders(ctx context.Context, studentID string) ([]models.PaymentOrder, error)
+	SetOrders(ctx context.Context, studentID string, orders []models.PaymentOrder, ttl time.Duration) error
+	DeleteOrders(ctx context.Context, studentID string) error
 	Ping(ctx context.Context) error
 }
 
@@ -98,6 +101,47 @@ func (r *RedisIdempotencyRepo) SetIdempotency(ctx context.Context, key string, r
 	return nil
 }
 
+func (r *RedisIdempotencyRepo) formatOrdersKey(studentID string) string {
+	return fmt.Sprintf("finance:orders:%s", studentID)
+}
+
+func (r *RedisIdempotencyRepo) GetOrders(ctx context.Context, studentID string) ([]models.PaymentOrder, error) {
+	if r.client == nil {
+		return nil, ErrIdempotencyNotFound
+	}
+	redisKey := r.formatOrdersKey(studentID)
+	val, err := r.client.Get(ctx, redisKey).Result()
+	if err != nil {
+		return nil, err
+	}
+	var orders []models.PaymentOrder
+	if err := json.Unmarshal([]byte(val), &orders); err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
+func (r *RedisIdempotencyRepo) SetOrders(ctx context.Context, studentID string, orders []models.PaymentOrder, ttl time.Duration) error {
+	if r.client == nil {
+		return nil
+	}
+	redisKey := r.formatOrdersKey(studentID)
+	data, err := json.Marshal(orders)
+	if err != nil {
+		return err
+	}
+	return r.client.Set(ctx, redisKey, data, ttl).Err()
+}
+
+func (r *RedisIdempotencyRepo) DeleteOrders(ctx context.Context, studentID string) error {
+	if r.client == nil {
+		return nil
+	}
+	redisKey := r.formatOrdersKey(studentID)
+	return r.client.Del(ctx, redisKey).Err()
+}
+
 func (r *RedisIdempotencyRepo) Ping(ctx context.Context) error {
 	return r.client.Ping(ctx).Err()
 }
+

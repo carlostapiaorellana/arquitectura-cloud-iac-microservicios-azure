@@ -21,7 +21,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         try {
           const res = await authService.refreshToken(refreshToken);
           if (isMounted) {
-            setAccessToken(res.accessToken);
+            setAccessToken(res.accessToken, res.refreshToken);
           }
         } catch {
           if (isMounted) {

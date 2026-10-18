@@ -41,7 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
     let isMounted = true;
     const checkGateway = async () => {
       try {
-        const rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
+        const cloudGateway = 'https://ca-api-gateway.greenglacier-aabec240.mexicocentral.azurecontainerapps.io';
+        const rawBase = (import.meta.env.VITE_API_BASE_URL || cloudGateway).replace(/\/+$/, '');
         const healthUrl = `${rawBase.replace(/\/api\/v1\/?$/, '')}/health/live`;
         const res = await fetch(healthUrl, { method: 'GET' });
         if (isMounted) setGatewayOnline(res.ok);
@@ -137,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
           <Server className="h-4 w-4 shrink-0" />
           {!collapsed && (
             <div className="flex flex-1 items-center justify-between overflow-hidden">
-              <span className="text-xs font-medium">API Gateway</span>
+              <span className="text-xs font-medium">Gateway Cloud</span>
               <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider">
                 <span
                   className={cn(
@@ -145,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
                     gatewayOnline ? 'animate-pulse bg-emerald-500' : 'bg-rose-500'
                   )}
                 />
-                {gatewayOnline ? 'UP' : 'DOWN'}
+                {gatewayOnline ? 'ONLINE' : 'OFFLINE'}
               </span>
             </div>
           )}

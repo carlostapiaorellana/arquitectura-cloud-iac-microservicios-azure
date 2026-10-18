@@ -38,7 +38,7 @@ func NewRedisCacheRepo(addr, password string, db int) *RedisCacheRepo {
 }
 
 func (c *RedisCacheRepo) key(userID string) string {
-	return "profile:" + userID
+	return fmt.Sprintf("student:profile:%s", userID)
 }
 
 func (c *RedisCacheRepo) GetProfile(ctx context.Context, userID string) (*models.UserProfile, error) {

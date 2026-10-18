@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AuthLoginResponse } from '../types/api.types';
+import { queryClient } from '../api/queryClient';
 
 export interface AuthUserMeta {
   userId: string;
@@ -48,7 +49,7 @@ interface AuthState {
   isAuthenticated: boolean;
 
   setSession: (data: AuthLoginResponse) => void;
-  setAccessToken: (token: string) => void;
+  setAccessToken: (token: string, newRefreshToken?: string) => void;
   clearSession: (broadcast?: boolean) => void;
 }
 
@@ -61,6 +62,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false, // Se considerará plenamente autenticado cuando tenga accessToken en memoria
 
   setSession: (data: AuthLoginResponse) => {
+    // Purgar cualquier caché residual en memoria de sesiones previas
+    queryClient.clear();
+
     const userMeta: AuthUserMeta = {
       userId: data.userId,
       role: data.role,
@@ -86,14 +90,30 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  setAccessToken: (token: string) => {
-    set({
+  setAccessToken: (token: string, newRefreshToken?: string) => {
+    if (newRefreshToken && typeof window !== 'undefined') {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const parsed: StoredAuthMeta = JSON.parse(raw);
+          parsed.refreshToken = newRefreshToken;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        } catch {
+          // ignore
+        }
+      }
+    }
+    set((state) => ({
       accessToken: token,
+      refreshToken: newRefreshToken ?? state.refreshToken,
       isAuthenticated: true,
-    });
+    }));
   },
 
   clearSession: (broadcast = true) => {
+    // Purgar inmediatamente la caché de queries en memoria
+    queryClient.clear();
+
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEY);
       if (broadcast && authBroadcast) {

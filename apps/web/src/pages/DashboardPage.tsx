@@ -53,10 +53,11 @@ export const DashboardPage: React.FC = () => {
   const studentFullName =
     profile?.fullName ||
     (profile?.firstName ? `${profile.firstName} ${profile.lastNameFather || ''}`.trim() : null) ||
-    (user?.username === 'alu01' ? 'Juan Carlos Ramirez Lopez' : user?.username || 'Estudiante');
+    (profileQuery.isLoading ? 'Cargando perfil...' : user?.username || 'Estudiante');
 
   const institutionalCode =
-    profile?.institutionalCode || (user?.username === 'alu01' ? 'ALU-2026-0001' : 'ALU-REG-2026');
+    profile?.institutionalCode ||
+    (profileQuery.isLoading ? 'Cargando...' : user?.username ? `ALU-${user.username.toUpperCase()}` : 'ALU-REG-2026');
 
   return (
     <div className="space-y-6">
@@ -144,7 +145,7 @@ export const DashboardPage: React.FC = () => {
             ) : (
               <>
                 <span className="font-display text-2xl font-bold text-slate-900 dark:text-white">
-                  {weightedAverage > 0 ? weightedAverage.toFixed(2) : '16.00'}
+                  {weightedAverage > 0 ? weightedAverage.toFixed(2) : grades.length > 0 ? '0.00' : 'S/C'}
                 </span>
                 <span className="text-xs text-slate-500">/ 20.00</span>
               </>
@@ -152,7 +153,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-1 flex items-center justify-between">
             <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              Escala Vigesimal: APROBADO
+              {weightedAverage >= 10.5 ? 'Escala Vigesimal: APROBADO' : weightedAverage > 0 ? 'Escala Vigesimal: DESAPROBADO' : 'Sin Calificaciones'}
             </span>
             <ArrowRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
           </div>
@@ -176,13 +177,13 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold text-slate-900 dark:text-white">
-              4
+              {grades.length > 0 ? grades.length * 4 : 4}
             </span>
             <span className="text-xs text-slate-500">Créditos</span>
           </div>
           <div className="mt-1 flex items-center justify-between">
             <span className="text-[11px] font-medium text-slate-500">
-              1 Asignatura en Curso
+              {grades.length > 0 ? `${grades.length} Asignatura(s)` : '1 Asignatura en Curso'}
             </span>
             <ArrowRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
           </div>
@@ -209,15 +210,15 @@ export const DashboardPage: React.FC = () => {
               <Skeleton className="h-8 w-24" />
             ) : (
               <span className="font-display text-2xl font-bold text-slate-900 dark:text-white">
-                {formatPEN(pendingAmount > 0 ? pendingAmount : 350.0)}
+                {formatPEN(pendingAmount)}
               </span>
             )}
           </div>
           <div className="mt-1 flex items-center justify-between">
             <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
               {pendingOrders.length > 0
-                ? `${pendingOrders.length} Orden Pendiente`
-                : '1 Orden Pendiente (Matrícula)'}
+                ? `${pendingOrders.length} Orden(es) Pendiente(s)`
+                : 'Al día en Tesorería'}
             </span>
             <ArrowRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
           </div>
@@ -244,7 +245,7 @@ export const DashboardPage: React.FC = () => {
               <Skeleton className="h-8 w-16" />
             ) : (
               <span className="font-display text-2xl font-bold text-slate-900 dark:text-white">
-                {loans.length > 0 ? loans.length : '1'}
+                {loans.length}
               </span>
             )}
             <span className="text-xs text-slate-500">Préstamo(s) Activo(s)</span>

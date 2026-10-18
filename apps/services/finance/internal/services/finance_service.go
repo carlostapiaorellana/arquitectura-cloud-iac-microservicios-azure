@@ -43,6 +43,13 @@ func (s *FinanceService) GetMyOrders(ctx context.Context, studentID string) ([]m
 		return nil, errorhandling.NewBadRequestError("studentID es requerido", nil)
 	}
 
+	// 1. Intentar recuperar desde caché de Redis (particionado por studentID)
+	if cachedOrders, err := s.idempotencyRepo.GetOrders(ctx, studentID); err == nil && cachedOrders != nil {
+		s.logger.Debug("Órdenes recuperadas de caché Redis", "studentID", studentID, "count", len(cachedOrders))
+		return cachedOrders, nil
+	}
+
+	// 2. Consulta autoritativa a MySQL
 	orders, err := s.mysqlRepo.GetOrdersByStudentID(ctx, studentID)
 	if err != nil {
 		s.logger.Error("Error al consultar órdenes del estudiante", "studentID", studentID, "error", err)
@@ -52,6 +59,9 @@ func (s *FinanceService) GetMyOrders(ctx context.Context, studentID string) ([]m
 	if orders == nil {
 		orders = []models.PaymentOrder{}
 	}
+
+	// 3. Guardar en caché Redis con TTL de 5 minutos
+	_ = s.idempotencyRepo.SetOrders(ctx, studentID, orders, 5*time.Minute)
 
 	return orders, nil
 }
@@ -163,6 +173,9 @@ func (s *FinanceService) ProcessPayment(
 	if err := s.idempotencyRepo.SetIdempotency(ctx, idempotencyKey, paymentResp, 24*time.Hour); err != nil {
 		s.logger.Warn("No se pudo cachear la respuesta idempotente en Redis", "error", err)
 	}
+
+	// 9b. Invalidar caché de órdenes del estudiante en Redis
+	_ = s.idempotencyRepo.DeleteOrders(ctx, studentID)
 
 	// 10. Publicar evento asíncrono PaymentCompletedEvent
 	corrID := observability.GetCorrelationID(ctx)

@@ -9,9 +9,14 @@ export function useBooksQuery(category?: string) {
   });
 }
 
+import { useAuthStore } from '../store/auth.store';
+
 export function useMyLoansQuery() {
+  const userId = useAuthStore((state) => state.user?.userId);
+
   return useQuery<Loan[], Error>({
-    queryKey: ['library', 'my-loans'],
+    queryKey: ['library', 'my-loans', userId ?? 'anonymous'],
     queryFn: libraryService.getMyLoans,
+    enabled: Boolean(userId),
   });
 }

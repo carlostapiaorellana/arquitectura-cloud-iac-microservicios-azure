@@ -67,7 +67,7 @@ export const Topbar: React.FC = () => {
           </div>
           <div className="hidden flex-col text-left md:flex">
             <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-              {user?.username === 'alu01' ? 'Juan Carlos R.' : user?.username || 'Usuario'}
+              {user?.username || 'Usuario'}
             </span>
             <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />

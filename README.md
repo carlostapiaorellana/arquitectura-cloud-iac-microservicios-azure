@@ -24,6 +24,45 @@ Esta solución implementa una **Plataforma Cloud-Native Empresarial** integral d
 
 ---
 
+## Demostración Visual de la Plataforma en Producción (Cloud Showcase)
+
+La plataforma universitaria se encuentra desplegada y operativa en **Microsoft Azure** (`rg-univ-dev-mxc`, región `mexicocentral`) utilizando **Azure Container Apps** con topología privada, balanceador perimetral y escalado elástico:
+
+- **Portal Web Estudiantil (Frontend SPA)**: [https://ca-web-portal.greenglacier-aabec240.mexicocentral.azurecontainerapps.io/](https://ca-web-portal.greenglacier-aabec240.mexicocentral.azurecontainerapps.io/)
+- **API Gateway Perimetral**: `https://ca-api-gateway.greenglacier-aabec240.mexicocentral.azurecontainerapps.io`
+
+### 1. Acceso Institucional y Perímetro de Seguridad (/login)
+> **URL**: `https://ca-web-portal.greenglacier-aabec240.mexicocentral.azurecontainerapps.io/login`  
+> Pantalla de autenticación institucional integrada con `auth-service` vía API Gateway. Implementa tokens JWT asimétricos RS256, autocompletado demo para testing (`alu01` / `password123`), y telemetría de arquitectura en tiempo real.
+
+![Pantalla de Login Institucional](docs/assets/01_login_cloud.png)
+
+---
+
+### 2. Portal y Dashboard Principal del Estudiante (/dashboard)
+> **URL**: `https://ca-web-portal.greenglacier-aabec240.mexicocentral.azurecontainerapps.io/dashboard`  
+> Resumen académico y personal del alumno autenticado (**Juan Carlos Ramirez Lopez**, código `ALU-2026-0001`). Muestra el estado activo del Gateway Cloud en vivo, KPIs vigesimales, créditos matriculados y alertas financieras integradas.
+
+![Dashboard Principal](docs/assets/02_dashboard_cloud.png)
+
+---
+
+### 3. Ficha de Matrícula y Récord Académico Vigesimal (/matricula-notas)
+> **URL**: `https://ca-web-portal.greenglacier-aabec240.mexicocentral.azurecontainerapps.io/matricula-notas`  
+> Módulo de consulta académica conectado a `enrollment-service` y `academic-service`. Presenta el promedio ponderado del ciclo (**17.17** en escala vigesimal peruana 0-20), asignaturas matriculadas, calificaciones parciales y estados de aprobación con semaforización esmeralda.
+
+![Matrícula y Calificaciones](docs/assets/03_notas_cloud.png)
+
+---
+
+### 4. Tesorería Virtual y Pagos Idempotentes (/pagos)
+> **URL**: `https://ca-web-portal.greenglacier-aabec240.mexicocentral.azurecontainerapps.io/pagos`  
+> Módulo financiero conectado a `finance-service` sobre MySQL 8.4 y Redis 7. Gestiona órdenes de matrícula y pensiones con protección estricta contra doble cobro mediante cabecera `Idempotency-Key` (TTL 24h) y pasarela de pago multimodal (Tarjeta, Yape/Plin, Transferencia).
+
+![Tesorería y Pagos](docs/assets/04_tesoreria_cloud.png)
+
+---
+
 ## 2. Diagramas de Arquitectura del Sistema
 
 ### Arquitectura de Aplicación C4 (Flujo Transaccional)

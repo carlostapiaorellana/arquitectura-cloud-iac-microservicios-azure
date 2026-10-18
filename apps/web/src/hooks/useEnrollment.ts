@@ -36,16 +36,24 @@ export function calculateWeightedAverage(grades: Grade[]): number {
   return Math.round(simpleAvg * 100) / 100;
 }
 
+import { useAuthStore } from '../store/auth.store';
+
 export function useEnrollmentsQuery() {
+  const userId = useAuthStore((state) => state.user?.userId);
+
   return useQuery<Enrollment[], Error>({
-    queryKey: ['enrollment', 'my-enrollments'],
+    queryKey: ['enrollment', 'my-enrollments', userId ?? 'anonymous'],
     queryFn: enrollmentService.getMyEnrollments,
+    enabled: Boolean(userId),
   });
 }
 
 export function useGradesQuery() {
+  const userId = useAuthStore((state) => state.user?.userId);
+
   return useQuery<Grade[], Error>({
-    queryKey: ['enrollment', 'grades'],
+    queryKey: ['enrollment', 'grades', userId ?? 'anonymous'],
     queryFn: enrollmentService.getGrades,
+    enabled: Boolean(userId),
   });
 }

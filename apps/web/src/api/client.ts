@@ -3,8 +3,9 @@ import { useAuthStore } from '../store/auth.store';
 import { generateULID } from '../utils/ulid';
 import type { RefreshTokenResponse } from '../types/api.types';
 
-// Determinación segura de la URL base del Gateway (evitando duplicar /api/v1)
-const rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
+// Determinación segura de la URL base del Gateway (conectado exclusivamente al Gateway de Azure)
+const CLOUD_GATEWAY_URL = 'https://ca-api-gateway.greenglacier-aabec240.mexicocentral.azurecontainerapps.io/api/v1';
+const rawBase = (import.meta.env.VITE_API_BASE_URL || CLOUD_GATEWAY_URL).replace(/\/+$/, '');
 const API_BASE_URL = rawBase.endsWith('/api/v1') ? rawBase : `${rawBase}/api/v1`;
 
 export const apiClient = axios.create({
@@ -41,8 +42,10 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 1. Inyección de token de acceso en memoria
     const token = useAuthStore.getState().accessToken;
-    if (token && !config.headers.Authorization) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
     }
 
     // 2. Inyección de X-Correlation-Id monotónico
