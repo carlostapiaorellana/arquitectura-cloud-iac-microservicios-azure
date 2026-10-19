@@ -96,3 +96,9 @@ variable "cosmos_location" {
   description = "Región de Azure para la réplica de datos de Cosmos DB (default mexicocentral por política de regiones permitidas)."
   default     = "mexicocentral"
 }
+
+variable "gateway_image" {
+  type        = string
+  description = "Imagen de contenedor para el API Gateway (por defecto imagen oficial de inicio rápido de Microsoft)."
+  default     = "mcr.microsoft.com/k8se/quickstart:latest"
+}

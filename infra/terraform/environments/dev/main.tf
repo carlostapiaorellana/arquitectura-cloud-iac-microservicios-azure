@@ -303,7 +303,7 @@ module "ca_gateway" {
   target_port                  = 8080
   min_replicas                 = 0
   max_replicas                 = 3
-  image                        = "${module.container_registry.login_server}/ca-api-gateway:latest"
+  image                        = var.gateway_image
   cpu                          = 0.25
   memory                       = "0.5Gi"
   tags                         = var.tags
