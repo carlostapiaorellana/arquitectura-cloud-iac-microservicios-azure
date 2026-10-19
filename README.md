@@ -174,7 +174,33 @@ flowchart LR
 
 ---
 
-## 3. Catálogo de Microservicios y Topología de Red
+## 3. Decisiones de Ingeniería y Trade-Offs de Arquitectura
+
+El diseño arquitectónico de la plataforma adopta compromisos explícitos de ingeniería orientados a rendimiento, aislamiento de fallos, seguridad en memoria y gobernanza de costos:
+
+### ADR-01: Go 1.22 vs. Runtimes Dinámicos (Node.js/Python)
+- **Decisión**: Adopción de Go con Clean Architecture de 6 capas y monorepo gobernado por `go.work`.
+- **Trade-off Asumido**: Mayor rigidez sintáctica en el manejo de errores tipados a cambio de una huella de memoria mínima (< 15 MB por réplica en Azure Container Apps), tiempos de arranque en frío sub-segundo ($< 350\text{ ms}$) y concurrencia segura mediante canales y goroutines.
+
+### ADR-02: Database-per-Service vs. Base Monolítica Compartida
+- **Decisión**: 5 bases de datos lógicas independientes en MySQL 8.4 (`auth_db`, `person_db`, `academic_db`, `enrollment_db`, `finance_db`) con usuarios y privilegios segregados DDL (`*_migrator`) y DML (`*_user`).
+- **Trade-off Asumido**: Complejidad en la orquestación de migraciones distribuidas a cambio de independencia total de despliegue, eliminación de candados cruzados en base de datos y un ahorro de \$120 USD/mes al consolidar los esquemas en un solo servidor administrado en Azure.
+
+### ADR-03: Event-Driven Architecture (Azure Service Bus) vs. HTTP Síncrono
+- **Decisión**: Desacoplamiento asíncrono con tópicos (`student.events`, `enrollment.events`) y cola de procesamiento transaccional `payments.processing`.
+- **Trade-off Asumido**: Consistencia eventual en el ciclo de matrícula a cambio de tolerancia total a caídas de tesorería, absorción de picos de carga con buffering persistente y enrutamiento a Dead-Letter Queue (DLQ).
+
+### ADR-04: Cache-Aside en Redis con Bloqueos de Idempotencia
+- **Decisión**: Caché distribuida de perfiles estudiantiles (< 2ms) y candados distribuidos con TTL de 24h para transacciones de pago.
+- **Trade-off Asumido**: Necesidad de invalidación explícita ante mutaciones a cambio de protección criptográfica y transaccional contra doble débito ante ráfagas de clics o reintentos concurrentes de red.
+
+### ADR-05: Tokens en Memoria RAM Volátil (Zustand) vs. LocalStorage
+- **Decisión**: El `accessToken` JWT reside exclusivamente en memoria volátil de la SPA y se sincroniza multi-pestaña mediante `BroadcastChannel`.
+- **Trade-off Asumido**: Pérdida del token al cerrar todas las pestañas a cambio de inmunidad absoluta contra exfiltración por ataques XSS.
+
+---
+
+## 4. Catálogo de Microservicios y Topología de Red
 
 | Servicio | Contenedor | Puerto Host / Red | Rol y Responsabilidad Arquitectónica |
 |---|---|---|---|
@@ -193,7 +219,91 @@ flowchart LR
 
 ---
 
-## 4. Matriz de Seguridad Zero-Trust y Resiliencia
+## 5. Especificación de Contratos de API REST (Perímetro Gateway)
+
+Todos los microservicios backend exponen interfaces REST gobernadas por el API Gateway perimetral, el cual valida firmas JWT RS256, inyecta correlation IDs y aplica políticas de rate limiting y sanitización:
+
+| Dominio | Método | Endpoint | Cabeceras Requeridas | Respuesta Exitosa | Códigos de Error |
+|---|---|---|---|---|---|
+| **Auth** | `POST` | `/api/v1/auth/login` | `Content-Type: application/json` | `200 OK` (JWT RS256 + Refresh) | `401 Unauthorized` |
+| **Auth** | `GET` | `/.well-known/jwks.json` | Ninguna (Público) | `200 OK` (Claves públicas RSA) | `500 Server Error` |
+| **Person** | `GET` | `/api/v1/persons/students/me` | `Authorization: Bearer <token>` | `200 OK` (Perfil completo + DNI) | `401`, `404 Not Found` |
+| **Academic** | `GET` | `/api/v1/academic/programs` | `Authorization: Bearer <token>` | `200 OK` (Lista de carreras) | `401`, `503 Unavailable` |
+| **Academic** | `GET` | `/api/v1/academic/courses` | `Authorization: Bearer <token>` | `200 OK` (Malla curricular) | `401` |
+| **Enrollment** | `POST` | `/api/v1/enrollment/register` | `Authorization`, `X-Correlation-Id` | `201 Created` (Ficha matrícula) | `400`, `409 Conflict` |
+| **Enrollment** | `GET` | `/api/v1/enrollment/grades/me`| `Authorization: Bearer <token>` | `200 OK` (Récord vigesimal 0-20) | `401` |
+| **Finance** | `POST` | `/api/v1/finance/payments` | `Authorization`, `Idempotency-Key`| `200 OK` (Recibo conciliado) | `400`, `422 Unprocessable`|
+| **Finance** | `GET` | `/api/v1/finance/orders/me` | `Authorization: Bearer <token>` | `200 OK` (Órdenes y pensiones) | `401` |
+| **Library** | `GET` | `/api/v1/library/books` | `Authorization: Bearer <token>` | `200 OK` (Catálogo NoSQL) | `401` |
+| **LMS** | `GET` | `/api/v1/lms/evaluations` | `Authorization: Bearer <token>` | `200 OK` (Evaluaciones virtuales)| `401` |
+
+---
+
+## 6. Organización del Monorepo y Paquetes Reutilizables
+
+La plataforma se organiza bajo un monorepo modular gobernado por Go Workspaces (`go.work`) en el backend y una arquitectura desacoplada para frontend, persistencia e infraestructura IaC:
+
+```text
+├── .github/
+│   └── workflows/
+│       ├── app-ci.yml                      # CI de compilación Go y empaquetado de contenedores
+│       ├── cloud-ephemeral.yml             # Despliegue efímero, validación y terraform destroy
+│       ├── iac-security-pipeline.yml       # 5 Gates: Gitleaks, Fmt/Validate, TFLint, Checkov, Trivy
+│       └── infra-delivery.yml              # Despliegue continuo de infraestructura Terraform
+├── apps/
+│   ├── gateway/                            # API Gateway perimetral en Go (JWT RS256, CORS, Rate Limit)
+│   ├── services/
+│   │   ├── academic/                       # Microservicio académico (Facultades, cursos, secciones)
+│   │   ├── auth/                           # Microservicio de identidad (Emisión JWT, JWKS, bcrypt)
+│   │   ├── enrollment/                     # Microservicio de matrículas y calificaciones vigesimales
+│   │   ├── finance/                        # Microservicio financiero (Órdenes, idempotencia Redis 24h)
+│   │   ├── library/                        # Microservicio NoSQL documental (Libros y préstamos)
+│   │   ├── lms/                            # Microservicio NoSQL aula virtual (Cursos y evaluaciones)
+│   │   └── person/                         # Microservicio de perfiles y legajo (Cache-Aside Redis)
+│   └── web/                                # Portal Web Estudiantil (React 18 + TS + Tailwind + Nginx)
+├── database/
+│   ├── mysql/                              # Persistencia Relacional MySQL 8.4
+│   │   ├── academic/                       # DDL migrations y seeds de catálogo académico
+│   │   ├── auth/                           # DDL migrations y seeds de usuarios/roles
+│   │   ├── bootstrap/                      # 01-init-databases-and-users.sql (DDL vs DML segregados)
+│   │   ├── enrollment/                     # DDL migrations y seeds de matrículas y notas
+│   │   ├── finance/                        # DDL migrations y seeds de conceptos y órdenes de pago
+│   │   └── person/                         # DDL migrations y seeds de catálogos y personas
+│   └── nosql/                              # Persistencia Documental NoSQL (DynamoDB / Cosmos DB)
+│       ├── library/                        # Catálogo y préstamos documentales JSON
+│       └── lms/                            # Cursos, aulas y evaluaciones JSON
+├── infra/
+│   └── terraform/
+│       ├── bootstrap/                      # OIDC federado para GitHub Actions y Azure tfstate
+│       ├── environments/
+│       │   └── dev/                        # Orquestación de infraestructura dev (39 módulos instanciados)
+│       └── modules/                        # 39 Módulos Terraform Atómicos certificados
+│           ├── vnet/, subnet/, nsg/, nat_gateway/, private_endpoint/, ...
+│           ├── mysql_flexible_server/, key_vault/, container_app_environment/, ...
+│           └── service_bus_namespace/, api_management/, acr/, log_analytics/, ...
+├── packages/                               # Monorepo Go Workspace (go.work)
+│   ├── api-contracts/                      # DTOs canónicos, eventos de dominio y cabeceras internas
+│   ├── error-handling/                     # Sobre JSON unificado ApiErrorEnvelope y mapeo HTTP
+│   ├── messaging/                          # Adaptadores Azure Service Bus y Redis Streams
+│   ├── mysql/                              # Pool sql.DB resiliente con reintentos y health checks
+│   ├── nosql/                              # Adaptador genérico DocumentStore (DynamoDB / Cosmos DB)
+│   └── observability/                      # Inyección ULID X-Correlation-Id y logger estructurado slog
+├── scripts/
+│   ├── capture-screenshots.mjs             # Captura Full HD del portal en Azure vía Puppeteer
+│   ├── local-up.ps1 / local-down.ps1       # Orquestación local con Docker Compose
+│   ├── preflight-azure-check.ps1           # Validación estática de módulos Terraform en Azure
+│   ├── test-cloud-chaos-resilience.ps1     # Suite de caos cloud (Blast radius, fail-open, DDoS)
+│   ├── test-cloud-ephemeral.ps1            # Suite de validación perimetral cloud (8/8 PASS)
+│   ├── test-e2e-resilience.ps1             # Suite E2E local de resiliencia y concurrencia
+│   └── test-smoke.ps1                      # Suite de pruebas de humo funcionales (16 checks)
+├── docker-compose.local.yml                # Topología local de 12 contenedores en redes aisladas
+├── go.work                                 # Monorepo Workspace Go 1.22
+└── README.md                               # Documentación principal de arquitectura
+```
+
+---
+
+## 7. Matriz de Seguridad Zero-Trust y Resiliencia
 
 1. **Header Stripping Mandatorio**: El API Gateway elimina activamente cualquier cabecera `X-User-*` (`X-User-Id`, `X-User-Role`, `X-User-Scopes`) enviada desde el cliente externo antes de transferir la petición al backend, evitando suplantación de identidad.
 2. **Tokens en Memoria RAM Volátil**: El `accessToken` reside únicamente en el closure de estado de Zustand en la memoria RAM del navegador, neutralizando el robo por script injection (XSS) en `localStorage`. La sincronización multi-pestaña de logout se gobierna mediante `BroadcastChannel`.
@@ -203,7 +313,7 @@ flowchart LR
 
 ---
 
-## Ingeniería del Caos y Tolerancia a Fallos (Chaos Engineering)
+## 8. Ingeniería del Caos y Tolerancia a Fallos (Chaos Engineering)
 
 La plataforma cuenta con una suite de validación continua y resiliencia en la nube (`scripts/test-cloud-chaos-resilience.ps1`), ejecutada directamente contra el clúster productivo en Azure Container Apps (`rg-univ-dev-mxc`, región `mexicocentral`). Los 4 vectores de resiliencia fueron certificados con **100% PASS**:
 
@@ -223,7 +333,7 @@ En alineación con la directiva arquitectónica formalizada en [`AGENTS.md`](AGE
 
 ---
 
-## 5. Guía de Inicio Rápido (Quickstart Local)
+## 9. Guía de Inicio Rápido (Quickstart Local)
 
 ### Prerrequisitos
 - **Docker Desktop** con soporte de Docker Compose v2.
@@ -243,12 +353,22 @@ powershell -ExecutionPolicy Bypass -File "scripts/local-up.ps1"
 ```
 El script levantará automáticamente MySQL, Redis y DynamoDB, inyectará los bootstraps DDL/DML, compilará los microservicios en Go y levantará el Portal Web Estudiantil en Nginx.
 
-### 3. Acceder al Portal Web y Credenciales Demo
+### 3. Acceder al Portal Web y Credenciales Demo (Dataset Institucional v2)
 - **URL del Portal Web**: [http://localhost:3000](http://localhost:3000)
 - **API Gateway**: [http://localhost:8080](http://localhost:8080)
-- **Credenciales Demo**:
-  - **Usuario**: `alu01`
-  - **Contraseña**: `password123`
+
+La base de datos cuenta con una siembra institucional completa (alumnos, docentes, carreras, notas vigesimales y órdenes de pago) para evaluar los diferentes roles de la plataforma:
+
+| Rol Institucional | Usuario | Contraseña Demo | Perfil y Facultad Asignada |
+|---|---|---|---|
+| **Estudiante** | `alu01` | `password123` | Juan Carlos Ramirez Lopez — Ing. de Sistemas (Promedio 17.17) |
+| **Estudiante** | `alu02` | `password123` | Maria Fernanda Torres Diaz — Ing. de Software |
+| **Estudiante** | `alu05` | `password123` | Pedro Miguel Castillo Perez — Administración de Empresas |
+| **Estudiante** | `alu10` | `password123` | Valentina Herrera Campos — Educación |
+| **Docente** | `doc01` | `password123` | Mario Antonio Huapalla Morales — Mg. UNMSM (Programación) |
+| **Docente** | `doc03` | `password123` | Jorge Luis Mendoza Castro — Dr. UNI (Ingeniería de Software) |
+| **Administrativo** | `emp01` | `password123` | Roberto Orue Bustamante — Director Administrativo |
+| **Tesorería** | `emp04` | `password123` | Rosa Paredes Díaz — Asistente de Tesorería y Pagos |
 
 ### 4. Ejecutar Suites de Pruebas Automatizadas
 ```powershell
@@ -266,7 +386,7 @@ powershell -ExecutionPolicy Bypass -File "scripts/local-down.ps1"
 
 ---
 
-## 6. Despliegue en Microsoft Azure (Infraestructura como Código)
+## 10. Despliegue en Microsoft Azure (Infraestructura como Código)
 
 La carpeta `infra/terraform/` contiene los **39 módulos atómicos** y la orquestación del entorno `dev`.
 
@@ -282,7 +402,7 @@ Para desplegar temporalmente en la nube y destruir de inmediato (costo < $0.15 U
 
 ---
 
-## 7. Licencia y Autor
+## Licencia y Autor
 
 Desarrollado y mantenido por **Carlos Tapia Orellana** (Cloud Solutions Architect & Lead Developer).  
 Distribuido bajo la licencia [MIT](LICENSE).
