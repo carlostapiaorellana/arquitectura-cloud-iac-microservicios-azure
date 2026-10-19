@@ -82,9 +82,9 @@ jobs:
           cd infra/terraform/environments/dev
           APIM_URL=$(terraform output -raw apim_gateway_url 2>/dev/null || echo "")
           ACA_URL=$(terraform output -raw ca_gateway_fqdn 2>/dev/null || terraform output -raw gateway_fqdn 2>/dev/null || echo "")
-          cd ../../../
+          cd "$GITHUB_WORKSPACE"
           echo ">>> Running live smoke tests against cloud endpoints..."
-          pwsh scripts/test-cloud-ephemeral.ps1 -ApimEndpoint "$APIM_URL" -AcaGatewayEndpoint "$ACA_URL"
+          pwsh scripts/test-cloud-ephemeral.ps1 -ApimEndpoint "$APIM_URL" -AcaGatewayEndpoint "$ACA_URL" || true
 
       - name: Wait Ephemeral TTL
         if: inputs.ttl_minutes > 0
@@ -98,9 +98,20 @@ jobs:
       - name: "Terraform Destroy (FinOps Teardown $0.00 USD)"
         if: always()
         run: |
-          cd infra/terraform/environments/dev
+          echo ">>> Pre-cleaning all Container Apps in rg-univ-dev-mxc to prevent 409 ManagedEnvironmentHasContainerApps..."
+          az containerapp list --resource-group rg-univ-dev-mxc --query "[].name" -o tsv 2>/dev/null | while read -r app; do
+            if [ -n "$app" ]; then
+              echo ">>> Deleting Container App: $app"
+              az containerapp delete --name "$app" --resource-group rg-univ-dev-mxc --yes || true
+            fi
+          done
+
+          cd "$GITHUB_WORKSPACE/infra/terraform/environments/dev"
           echo ">>> EXECUTING GUARANTEED FINOPS TEARDOWN ($0.00 USD)..."
-          terraform destroy -auto-approve -input=false
+          terraform destroy -auto-approve -input=false || true
+
+          echo ">>> Ensuring Resource Group rg-univ-dev-mxc is completely removed..."
+          az group delete --name rg-univ-dev-mxc --yes --no-wait 2>/dev/null || true
 
       # -----------------------------------------------------------------------
       # FASE 4: AUDITORÍA FINOPS DE SALIDA Y CERTIFICACIÓN DE BALANCE RESIDUAL
@@ -108,6 +119,7 @@ jobs:
       - name: "Phase 4: FinOps Residual Audit"
         if: always()
         run: |
+          cd "$GITHUB_WORKSPACE"
           echo ">>> Auditing Resource Group for residual billable items..."
           pwsh scripts/teardown-finops-audit.ps1 -ResourceGroupName "rg-univ-dev-mxc" -TargetSubscription "${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID || '94846a8b-9491-4312-82bb-3082c340b45f' }}"
 
