@@ -15,7 +15,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$ResourceGroupName = "rg-univ-dev-ncus",
+    [string]$ResourceGroupName = "rg-univ-dev-mxc",
     [string]$TargetSubscription = "94846a8b-9491-4312-82bb-3082c340b45f",
     [switch]$DryRun
 )

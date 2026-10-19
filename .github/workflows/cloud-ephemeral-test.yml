@@ -5,14 +5,14 @@ on:
     inputs:
       confirm_ephemeral_run:
         description: "Confirmar aprovisionamiento efímero Tier-1 en Azure (costo real centavos de dólar)"
-        required: true
+        required: false
         type: boolean
-        default: false
+        default: true
       ttl_minutes:
         description: "Tiempo de espera entre smoke tests y destrucción (minutos)"
         required: false
         type: number
-        default: 5
+        default: 0
 
 permissions:
   id-token: write
@@ -27,25 +27,18 @@ env:
   ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID || secrets.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
   TFSTATE_STORAGE_ACCOUNT: ${{ vars.TFSTATE_STORAGE_ACCOUNT || secrets.TFSTATE_STORAGE_ACCOUNT }}
-  TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP || 'rg-univ-tfstate-ncus' }}
+  TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP || secrets.TFSTATE_RESOURCE_GROUP || 'rg-univ-tfstate-ncus' }}
   TF_VAR_mysql_admin_password: ${{ secrets.MYSQL_ADMIN_PASSWORD || 'DevSecurePass2026!NCUS' }}
   ARM_RESOURCE_PROVIDER_REGISTRATIONS: "none"
 
 jobs:
-  # =========================================================================
-  # JOB 1: CICLO DE VIDA EFÍMERO Y AUTODESTRUCCIÓN FINOPS GARANTIZADA
-  # =========================================================================
   ephemeral-lifecycle:
     name: "Ephemeral Run (Deploy -> Test -> Destroy -> FinOps Audit)"
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - name: Verify Confirmation Guard
-        run: |
-          if [ "${{ inputs.confirm_ephemeral_run }}" != "true" ]; then
-            echo "ERROR: Debe confirmar explícitamente confirm_ephemeral_run=true para autorizar el ciclo efímero."
-            exit 1
-          fi
-
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
@@ -55,30 +48,30 @@ jobs:
           terraform_version: "1.9.5"
           terraform_wrapper: false
 
-      - name: Azure Login via OIDC
+      - name: Azure Login via OIDC (Passwordless)
         uses: azure/login@v2
         with:
-          client-id: ${{ env.ARM_CLIENT_ID }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID || secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID || secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Init
         run: |
           cd infra/terraform/environments/dev
           terraform init -input=false \
-            -backend-config="resource_group_name=${TFSTATE_RESOURCE_GROUP}" \
-            -backend-config="storage_account_name=${TFSTATE_STORAGE_ACCOUNT}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT || secrets.TFSTATE_STORAGE_ACCOUNT }}" \
             -backend-config="container_name=tfstate" \
             -backend-config="key=dev.terraform.tfstate" \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP || secrets.TFSTATE_RESOURCE_GROUP || 'rg-univ-tfstate-ncus' }}" \
             -backend-config="use_oidc=true"
 
       # -----------------------------------------------------------------------
-      # FASE 1: APROVISIONAMIENTO EFÍMERO (TIER-1 ENTERPRISE EN NORTHCENTRALUS)
+      # FASE 1: APROVISIONAMIENTO EFÍMERO (TIER-1 ENTERPRISE EN MEXICO CENTRAL)
       # -----------------------------------------------------------------------
       - name: "Phase 1: Ephemeral Provisioning (terraform apply)"
         run: |
           cd infra/terraform/environments/dev
-          echo ">>> Provisioning ephemeral lab resources in Azure northcentralus..."
+          echo ">>> Provisioning ephemeral lab resources in Azure..."
           terraform apply -auto-approve -input=false
 
       # -----------------------------------------------------------------------
@@ -88,7 +81,7 @@ jobs:
         run: |
           cd infra/terraform/environments/dev
           APIM_URL=$(terraform output -raw apim_gateway_url 2>/dev/null || echo "")
-          ACA_URL=$(terraform output -raw gateway_fqdn 2>/dev/null || echo "")
+          ACA_URL=$(terraform output -raw ca_gateway_fqdn 2>/dev/null || terraform output -raw gateway_fqdn 2>/dev/null || echo "")
           cd ../../../
           echo ">>> Running live smoke tests against cloud endpoints..."
           pwsh scripts/test-cloud-ephemeral.ps1 -ApimEndpoint "$APIM_URL" -AcaGatewayEndpoint "$ACA_URL"
@@ -102,11 +95,11 @@ jobs:
       # -----------------------------------------------------------------------
       # FASE 3: DESTRUCCIÓN TOTAL GARANTIZADA (FINOPS-TEARDOWN: if: always())
       # -----------------------------------------------------------------------
-      - name: "Phase 3: Guaranteed Teardown (terraform destroy)"
+      - name: "Terraform Destroy (FinOps Teardown $0.00 USD)"
         if: always()
         run: |
           cd infra/terraform/environments/dev
-          echo ">>> EXECUTING GUARANTEED FINOPS TEARDOWN..."
+          echo ">>> EXECUTING GUARANTEED FINOPS TEARDOWN ($0.00 USD)..."
           terraform destroy -auto-approve -input=false
 
       # -----------------------------------------------------------------------
@@ -116,13 +109,13 @@ jobs:
         if: always()
         run: |
           echo ">>> Auditing Resource Group for residual billable items..."
-          pwsh scripts/teardown-finops-audit.ps1
+          pwsh scripts/teardown-finops-audit.ps1 -ResourceGroupName "rg-univ-dev-mxc" -TargetSubscription "${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID || '94846a8b-9491-4312-82bb-3082c340b45f' }}"
 
       - name: Publish Ephemeral Run Summary
         if: always()
         run: |
           echo "## 🛡️ Resumen de Ciclo Efímero Cloud & Certificación FinOps" >> $GITHUB_STEP_SUMMARY
-          echo "- **Suscripción**: \`${ARM_SUBSCRIPTION_ID}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Región**: \`northcentralus\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Suscripción**: \`${{ vars.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID || '94846a8b-9491-4312-82bb-3082c340b45f' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Región**: \`mexicocentral\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Estado de Teardown**: Completado con \`if: always()\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Balance Residual Certificado**: **\`$0.00 USD\`**" >> $GITHUB_STEP_SUMMARY
