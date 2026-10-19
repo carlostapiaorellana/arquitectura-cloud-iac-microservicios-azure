@@ -235,7 +235,6 @@ La plataforma cuenta con una suite de validación continua y resiliencia en la n
 
 ### Gobernanza y Matriz FinOps de Costo Efímero ($0.00 USD)
 
-En alineación con la directiva arquitectónica formalizada en [`AGENTS.md`](AGENTS.md) y el rol de `@finops-sentinel`:
 - **Despliegue Bajo Demanda con OIDC Secretless**: Los 39 módulos atómicos de infraestructura Terraform se aprovisionan automáticamente mediante autenticación federada OIDC sin credenciales estáticas ni secretos de larga duración.
 - **Validación Perimetral en Vivo**: Se ejecutan las suites de humo y resiliencia cloud (`scripts/test-cloud-ephemeral.ps1` con **8/8 PASS** y `scripts/test-cloud-chaos-resilience.ps1` con **4/4 PASS**) contra los recursos activos.
 - **Destrucción Total Inmediata (`terraform destroy`)**: Una vez certificada la operatividad, el pipeline ejecuta la destrucción completa de la infraestructura, garantizando un saldo residual devengado de **`$0.00 USD / mes`**, protegiendo de forma estricta los límites de crédito de la suscripción `Azure for Students`.
