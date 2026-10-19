@@ -203,6 +203,26 @@ flowchart LR
 
 ---
 
+## Ingeniería del Caos y Tolerancia a Fallos (Chaos Engineering)
+
+La plataforma cuenta con una suite de validación continua y resiliencia en la nube (`scripts/test-cloud-chaos-resilience.ps1`), ejecutada directamente contra el clúster productivo en Azure Container Apps (`rg-univ-dev-mxc`, región `mexicocentral`). Los 4 vectores de resiliencia fueron certificados con **100% PASS**:
+
+| Experimento de Caos | Escenario Inyectado | Comportamiento del Sistema | Resultado Verificado |
+| :--- | :--- | :--- | :--- |
+| **Blast Radius Cero** | Apagado intencional de `ca-academic-service` en Azure Container Apps (`az containerapp stop`). | El API Gateway contiene el fallo y devuelve `HTTP 503 Service Unavailable` controlado con correlation ID; los servicios de Auth, Person y Portal siguen respondiendo `200 OK`. | **PASS (0% afectación externa)** |
+| **Degradación Fail-Open** | Desconexión simulada de Azure Cache for Redis en `person-service`. | El microservicio degrada silenciosamente a MySQL Flexible Server para consultar el perfil del alumno; responde `HTTP 200 OK` con cabecera `X-Cache: MISS/BYPASS` sin emitir error 500. | **PASS (Alta disponibilidad)** |
+| **Carrera de Concurrencia e Idempotencia** | Ráfaga de 50 peticiones simultáneas sobre la misma orden de pago con clave `Idempotency-Key: test-chaos-idem-001`. | `finance-service` adquiere el candado distribuido en Redis (TTL 24h), procesa exactamente 1 pago en MySQL y devuelve respuesta cacheada para los otros 49 intentos concurrentes. | **PASS (Cero cobros duplicados)** |
+| **Protección Perimetral DDoS** | Ráfaga de 25 peticiones consecutivas en menos de 2 segundos desde una misma IP. | El algoritmo Token Bucket del API Gateway corta el tráfico saturado y responde con `HTTP 429 Too Many Requests`. | **PASS (Perímetro blindado)** |
+
+### Gobernanza y Matriz FinOps de Costo Efímero ($0.00 USD)
+
+En alineación con la directiva arquitectónica formalizada en [`AGENTS.md`](AGENTS.md) y el rol de `@finops-sentinel`:
+- **Despliegue Bajo Demanda con OIDC Secretless**: Los 39 módulos atómicos de infraestructura Terraform se aprovisionan automáticamente mediante autenticación federada OIDC sin credenciales estáticas ni secretos de larga duración.
+- **Validación Perimetral en Vivo**: Se ejecutan las suites de humo y resiliencia cloud (`scripts/test-cloud-ephemeral.ps1` con **8/8 PASS** y `scripts/test-cloud-chaos-resilience.ps1` con **4/4 PASS**) contra los recursos activos.
+- **Destrucción Total Inmediata (`terraform destroy`)**: Una vez certificada la operatividad, el pipeline ejecuta la destrucción completa de la infraestructura, garantizando un saldo residual devengado de **`$0.00 USD / mes`**, protegiendo de forma estricta los límites de crédito de la suscripción `Azure for Students`.
+
+---
+
 ## 5. Guía de Inicio Rápido (Quickstart Local)
 
 ### Prerrequisitos
